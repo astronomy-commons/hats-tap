@@ -1,0 +1,10 @@
+# Changes here will be overwritten by Copier
+_commit: v2.1.1
+_src_path: gh:lincc-frameworks/python-project-template
+author_email: lincc-frameworks-team@lists.lsst.org
+author_name: LINCC Frameworks
+custom_install: false
+package_name: hats_tap
+project_license: BSD
+project_name: hats-tap
+project_organization: astronomy-commons
