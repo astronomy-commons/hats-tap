@@ -15,8 +15,12 @@ classifiers = [
     "Programming Language :: Python",
 ]
 dynamic = ["version"]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
+    "Flask>=2.0.0",
+    "lsdb>=0.6.0",
+    "pandas",
+    "pyvo>=1.4",
     "queryparser-python3",
 ]
 
