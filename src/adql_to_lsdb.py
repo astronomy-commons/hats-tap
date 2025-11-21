@@ -100,7 +100,8 @@ class LSDBFormatListener(FormatListener):
 
         # Extract arguments from the parsed context
         args = self._extract_function_args_from_context(ctx)
-        assert args.pop(0).upper() == "POINT"
+        if args.pop(0).upper() != "POINT":
+            raise ValueError("Expected POINT function")
 
         if len(args) != 3:
             raise ValueError(f"POINT function expects 3 arguments, got {len(args)}")
