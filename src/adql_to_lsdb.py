@@ -551,7 +551,7 @@ def format_lsdb_code(entities: dict) -> str:
 
     Args:
         entities: Dictionary containing parsed ADQL entities with keys:
-                 'tables', 'columns', 'spatial_search', 'conditions', 'limits'
+                 'tables', 'columns', 'spatial_search', 'conditions', 'limits', 'order_by'
 
     Returns:
         str: Python code string using LSDB calls
