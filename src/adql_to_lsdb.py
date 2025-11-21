@@ -561,7 +561,8 @@ def format_lsdb_code(entities: dict) -> str:
     code += "cat = lsdb.open_catalog(\n"
 
     # Convert table names to catalog URLs (basic mapping for now)
-    assert entities["tables"]
+    if not entities["tables"]:
+        raise ValueError("No tables found in ADQL query")
     # For now, use the first table and convert to URL format
     table = entities["tables"][0]
     # Convert table name like 'gaiadr3.gaia' to URL format
