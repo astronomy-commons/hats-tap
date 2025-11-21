@@ -107,9 +107,8 @@ class LSDBFormatListener(FormatListener):
         if len(args) != 3:
             raise ValueError(f"POINT function expects 3 arguments, got {len(args)}")
 
-        coord_system = args.pop(0).strip("'\"")
-        if coord_system.upper() != "ICRS":
-            raise NotImplementedError(f"Only 'ICRS' coordinate system is supported, got '{coord_system}'")
+        coord_system_arg = args.pop(0)
+        self._validate_coord_system(coord_system_arg)
 
         # These should be identifiers that match the identifiers used
         # for the RA and DEC columns in the SELECT statement.
@@ -137,9 +136,7 @@ class LSDBFormatListener(FormatListener):
         if len(args) != 4:
             raise ValueError(f"CIRCLE function expects 4 arguments, got {len(args)}")
 
-        coord_system = args[0].strip("'\"")
-        if coord_system.upper() != "ICRS":
-            raise NotImplementedError(f"Only 'ICRS' coordinate system is supported, got '{coord_system}'")
+        self._validate_coord_system(args[0])
 
         try:
             ra = float(args[1])
@@ -163,9 +160,7 @@ class LSDBFormatListener(FormatListener):
         if len(args) < 4 or len(args) % 2 == 0:
             raise ValueError(f"POLYGON function expects an odd number of arguments >= 4, got {len(args)}")
 
-        coord_system = args[0].strip("'\"")
-        if coord_system.upper() != "ICRS":
-            raise NotImplementedError(f"Only 'ICRS' coordinate system is supported, got '{coord_system}'")
+        self._validate_coord_system(args[0])
 
         try:
             coordinates = []
@@ -235,6 +230,24 @@ class LSDBFormatListener(FormatListener):
             return True
         except ValueError:
             return False
+
+    def _validate_coord_system(self, coord_system_arg):
+        """
+        Validate that the coordinate system is ICRS.
+
+        Parameters
+        ----------
+        coord_system_arg : str
+            The coordinate system argument, potentially with quotes.
+
+        Raises
+        ------
+        NotImplementedError
+            If the coordinate system is not ICRS.
+        """
+        coord_system = coord_system_arg.strip("'\"")
+        if coord_system.upper() != "ICRS":
+            raise NotImplementedError(f"Only 'ICRS' coordinate system is supported, got '{coord_system}'")
 
     def enterSelect_list(self, ctx):
         """Parse the SELECT list to extract column names."""
