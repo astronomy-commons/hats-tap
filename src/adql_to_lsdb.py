@@ -107,8 +107,7 @@ class LSDBFormatListener(FormatListener):
         if len(args) != 3:
             raise ValueError(f"POINT function expects 3 arguments, got {len(args)}")
 
-        coord_system_arg = args.pop(0)
-        self._validate_coord_system(coord_system_arg)
+        self._validate_coord_system(args.pop(0))
 
         # These should be identifiers that match the identifiers used
         # for the RA and DEC columns in the SELECT statement.
@@ -244,7 +243,11 @@ class LSDBFormatListener(FormatListener):
         ------
         NotImplementedError
             If the coordinate system is not ICRS.
+        ValueError
+            If the coordinate system argument is not a string.
         """
+        if not isinstance(coord_system_arg, str):
+            raise ValueError(f"Coordinate system must be a string, got {type(coord_system_arg).__name__}")
         coord_system = coord_system_arg.strip("'\"")
         if coord_system.upper() != "ICRS":
             raise NotImplementedError(f"Only 'ICRS' coordinate system is supported, got '{coord_system}'")
