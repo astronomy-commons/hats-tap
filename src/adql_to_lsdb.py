@@ -131,7 +131,8 @@ class LSDBFormatListener(FormatListener):
 
         # Extract arguments from the parsed context
         args = self._extract_function_args_from_context(ctx)
-        assert args.pop(0).upper() == "CIRCLE"
+        func_name = args.pop(0)
+        assert func_name.upper() == "CIRCLE"
 
         if len(args) != 4:
             raise ValueError(f"CIRCLE function expects 4 arguments, got {len(args)}")
