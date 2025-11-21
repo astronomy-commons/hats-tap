@@ -388,13 +388,13 @@ class LSDBFormatListener(FormatListener):
         if value_text.startswith('"') and value_text.endswith('"'):
             return value_text[1:-1]  # Remove double quotes
 
-        # Try to parse as number
+        # Try to parse as number (int or float, including scientific notation)
         try:
-            # Try integer first
-            if "." not in value_text:
-                return int(value_text)
+            f = float(value_text)
+            if f == int(f):
+                return int(f)
             else:
-                return float(value_text)
+                return f
         except ValueError:
             # Return as string if not a number
             return value_text
