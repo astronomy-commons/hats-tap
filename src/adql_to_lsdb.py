@@ -152,7 +152,8 @@ class LSDBFormatListener(FormatListener):
 
         # Extract arguments from the parsed context
         args = self._extract_function_args_from_context(ctx)
-        assert args.pop(0).upper() == "POLYGON"
+        if args.pop(0).upper() != "POLYGON":
+            raise ValueError("Expected POLYGON function")
 
         if len(args) < 4 or len(args) % 2 == 0:
             raise ValueError(f"POLYGON function expects an odd number of arguments >= 4, got {len(args)}")
