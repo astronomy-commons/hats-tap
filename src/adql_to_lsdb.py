@@ -18,6 +18,7 @@ return q.head(15)
 
 import argparse
 import sys
+import traceback
 
 from antlr4 import ParseTreeWalker
 from queryparser.adql.adqltranslator import ADQLQueryTranslator, FormatListener, SelectQueryListener
@@ -106,19 +107,22 @@ class LSDBFormatListener(FormatListener):
         if len(args) != 3:
             raise ValueError(f"POINT function expects 3 arguments, got {len(args)}")
 
-        coord_system = args[0].strip("'\"")
+        coord_system = args.pop(0).strip("'\"")
         if coord_system.upper() != "ICRS":
             raise NotImplementedError(f"Only 'ICRS' coordinate system is supported, got '{coord_system}'")
 
-        try:
-            # These should match the RA, DEC columns from SELECT, but
-            # we can ignore this sort of validation for now.
-            pass
-        except ValueError as e:
-            raise ValueError("Invalid coordinates in POINT") from e
+        # These should be identifiers that match the identifiers used
+        # for the RA and DEC columns in the SELECT statement.
+        # Ensure that the variable names parsed here are in the list
+        # of selected columns.
+        ra_column, dec_column = args
+        if ra_column not in self.entities["columns"]:
+            raise ValueError(f"RA column '{ra_column}' not in SELECT clause")
+        if dec_column not in self.entities["columns"]:
+            raise ValueError(f"DEC column '{dec_column}' not in SELECT clause")
 
         # Again, these don't matter *yet* and would only matter for query validation.
-        self._current_point = {"ra": "ra", "dec": "dec"}
+        self._current_point = {"ra": ra_column, "dec": dec_column}
 
     def enterCircle(self, ctx):
         """Parse CIRCLE('ICRS', ra, dec, radius) within CONTAINS."""
@@ -542,9 +546,9 @@ def parse_adql_entities(adql: str) -> dict:
 
         return my_listener.get_entities()
     except NotImplementedError as e:
-        raise NotImplementedError("ADQL parsing failed") from e
+        raise NotImplementedError("Unimplemented ADQL feature") from e
     except Exception as e:
-        raise ValueError("Failed to parse ADQL query: {e}") from e
+        raise ValueError(f"Failed to parse ADQL query: {e}") from e
 
 
 def format_lsdb_code(entities: dict) -> str:
@@ -645,14 +649,14 @@ def main():
         adql_query = args.input.read()
         result = adql_to_lsdb(adql_query)
         print(result)
-    except NotImplementedError as e:
-        print(f"Error: {e}", file=sys.stderr)
-        raise SystemExit(1) from e
-    except ValueError as e:
-        print(f"Error: {e}", file=sys.stderr)
-        raise SystemExit(1) from e
     except KeyboardInterrupt as e:
         print("\nOperation cancelled.", file=sys.stderr)
+        raise SystemExit(1) from e
+    except NotImplementedError as e:
+        traceback.print_exc()
+        raise SystemExit(1) from e
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
         raise SystemExit(1) from e
 
 
