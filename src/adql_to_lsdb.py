@@ -520,12 +520,13 @@ class LSDBFormatListener(FormatListener):
 
 def parse_adql_entities(adql: str) -> dict:
     """
-    Parse ADQL query and extract the five entities of interest:
+    Parse ADQL query and extract the six entities of interest:
     - tables: List of table names (simple FROM clauses only)
     - columns: List of column names
     - spatial_search: Spatial search parameters (e.g., ConeSearch)
     - conditions: List of filter conditions
     - limits: Row limit information
+    - order_by: List of columns to order the results by
 
     Returns:
         dict: Dictionary containing the extracted entities
