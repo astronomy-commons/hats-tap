@@ -556,12 +556,16 @@ def format_lsdb_code(entities: dict) -> str:
     """
     Convert parsed ADQL entities to Python code that uses LSDB calls.
 
-    Args:
-        entities: Dictionary containing parsed ADQL entities with keys:
-                 'tables', 'columns', 'spatial_search', 'conditions', 'limits', 'order_by'
+    Parameters
+    ----------
+    entities : dict
+        Dictionary containing parsed ADQL entities with keys:
+        'tables', 'columns', 'spatial_search', 'conditions', 'limits'.
 
-    Returns:
-        str: Python code string using LSDB calls
+    Returns
+    -------
+    str
+        Python code string using LSDB calls.
     """
     code = "import lsdb\n\n"
 
