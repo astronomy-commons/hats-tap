@@ -69,7 +69,7 @@ class LSDBFormatListener(FormatListener):
     def exitContains(self, ctx):
         """Exit CONTAINS clause - validate and store spatial search info."""
         if not self._in_contains:
-            return
+            raise ValueError("Exiting CONTAINS without ever entering")
 
         # Validate that we have both POINT and CIRCLE, or POINT and POLYGON
         if not self._current_point:
@@ -100,7 +100,7 @@ class LSDBFormatListener(FormatListener):
     def enterPoint(self, ctx):
         """Parse POINT('ICRS', ra, dec) within CONTAINS."""
         if not self._in_contains:
-            return  # Ignore points outside CONTAINS
+            raise ValueError("Cannot translate uses of POINT outside of CONTAINS")
 
         # Extract arguments from the parsed context
         args = self._extract_function_args_from_context(ctx)
@@ -128,7 +128,7 @@ class LSDBFormatListener(FormatListener):
     def enterCircle(self, ctx):
         """Parse CIRCLE('ICRS', ra, dec, radius) within CONTAINS."""
         if not self._in_contains:
-            return  # Ignore circles outside CONTAINS
+            raise ValueError("Cannot translate uses of CIRCLE outside of CONTAINS")
 
         # Extract arguments from the parsed context
         args = self._extract_function_args_from_context(ctx)
@@ -152,7 +152,7 @@ class LSDBFormatListener(FormatListener):
     def enterPolygon(self, ctx):
         """Parse POLYGON('ICRS', x1, y1, x2, y2, ..., xn, yn) within CONTAINS."""
         if not self._in_contains:
-            return  # Ignore polygons outside CONTAINS
+            raise ValueError("Cannot translate uses of POLYGON outside of CONTAINS")
 
         # Extract arguments from the parsed context
         args = self._extract_function_args_from_context(ctx)
