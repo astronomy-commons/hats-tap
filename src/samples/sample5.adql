@@ -2,6 +2,6 @@ SELECT TOP 10
     objectid,objra,objdec
 FROM ztf_dr22
 WHERE CONTAINS(
-    POINT('ICRS', ra, dec),
+    POINT('ICRS', objra, objdec),
     POLYGON('ICRS', 280.0, 1.2e-3, 266.0, 2.0, 266.0, -3.0)) = 1
 ORDER BY ra, dec DESC
