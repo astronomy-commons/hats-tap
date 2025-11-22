@@ -284,24 +284,11 @@ class LSDBFormatListener(FormatListener):
         # Get the text and clean it up
         text = node.getText().strip()
 
-        # Skip if it's a comma or other punctuation
-        if text in [",", "(", ")", "*"]:
-            return None
-
-        # Handle SELECT * case
-        if text == "*":
-            return "*"
-
-        # For simple column names, just return the text
         # In a more complete implementation, we'd need to handle:
         # - table.column references
         # - aliased columns (column AS alias)
         # - function calls
         # - expressions
-
-        # Skip SQL keywords that might appear
-        if text.upper() in ["SELECT", "FROM", "WHERE", "TOP", "DISTINCT"]:
-            return None
 
         return text
 
