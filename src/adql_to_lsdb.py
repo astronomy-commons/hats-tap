@@ -17,11 +17,14 @@ return q.head(15)
 """
 
 import argparse
+import logging
 import sys
 import traceback
 
 from antlr4 import ParseTreeWalker
 from queryparser.adql.adqltranslator import ADQLQueryTranslator, FormatListener, SelectQueryListener
+
+logger = logging.getLogger(__name__)
 
 
 class LSDBFormatListener(FormatListener):
@@ -356,8 +359,8 @@ class LSDBFormatListener(FormatListener):
             condition = self._parse_comparison(ctx)
             if condition:
                 self._current_conditions.append(condition)
-        except Exception as e:
-            print(f"Warning: Could not parse comparison '{ctx.getText()}': {e}")
+        except (ValueError, AttributeError, IndexError) as e:
+            logger.warning("Could not parse comparison '%s': %s", ctx.getText(), e)
 
     def _parse_comparison(self, ctx):
         """
