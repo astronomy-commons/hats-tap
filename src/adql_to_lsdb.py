@@ -159,8 +159,8 @@ class LSDBFormatListener(FormatListener):
         if args.pop(0).upper() != "POLYGON":
             raise ValueError("Expected POLYGON function")
 
-        if len(args) < 4 or len(args) % 2 == 0:
-            raise ValueError(f"POLYGON function expects an odd number of arguments >= 4, got {len(args)}")
+        if len(args) < 7 or len(args) % 2 == 0:  # At least 3 points (6 coords) + 1 coord system
+            raise ValueError(f"POLYGON function expects an odd number of arguments >= 7, got {len(args)}")
 
         self._validate_coord_system(args[0])
 
