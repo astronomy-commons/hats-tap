@@ -370,7 +370,7 @@ class LSDBFormatListener(FormatListener):
         tokens = self._merge_unary_signs(tokens)
 
         # Look for basic pattern: column operator value
-        if len(tokens) >= 3:
+        if len(tokens) == 3:
             # Find the operator (typically in the middle)
             sql_operators = ["<", ">", "<=", ">=", "=", "!=", "<>"]
 
