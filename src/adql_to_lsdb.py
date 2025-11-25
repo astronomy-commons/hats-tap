@@ -52,6 +52,7 @@ class LSDBFormatListener(FormatListener):
         }
         # Track parsing context
         self._in_contains = False
+        self._contains_count = 0
         self._current_point = None
         self._current_circle = None
         self._current_polygon = None
@@ -61,6 +62,9 @@ class LSDBFormatListener(FormatListener):
 
     def enterContains(self, ctx):
         """Enter a CONTAINS clause - set context flag."""
+        self._contains_count += 1
+        if self._contains_count > 1:
+            raise ValueError("Multiple CONTAINS clauses are not supported")
         self._in_contains = True
         self._current_point = None
         self._current_circle = None
