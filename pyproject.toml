@@ -50,6 +50,7 @@ testpaths = [
     "src",
     "docs",
 ]
+pythonpath = ["src"]
 addopts = "--doctest-modules --doctest-glob=*.rst"
 
 [tool.ruff]

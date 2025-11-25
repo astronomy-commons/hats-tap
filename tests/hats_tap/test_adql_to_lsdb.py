@@ -2,12 +2,8 @@
 
 import pathlib
 
-# Import the module under test - it's in src/ directory at top level
-import sys
-
 import pytest
 
-sys.path.insert(0, str(pathlib.Path(__file__).parent.parent.parent / "src"))
 from adql_to_lsdb import parse_adql_entities
 
 
