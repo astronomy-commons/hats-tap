@@ -260,7 +260,17 @@ class LSDBFormatListener(FormatListener):
             raise NotImplementedError(f"Only 'ICRS' coordinate system is supported, got '{coord_system}'")
 
     def enterSelect_list(self, ctx):
-        """Parse the SELECT list to extract column names."""
+        """Parse the SELECT list to extract column names.
+
+        Raises
+        ------
+        ValueError
+            If the SELECT clause contains '*' (SELECT *) which is not supported.
+        """
+        # Detect SELECT * - when ctx.getText() is just '*', it means SELECT *
+        if ctx.getText().strip() == "*":
+            raise ValueError("SELECT * is not supported. Please specify column names explicitly.")
+
         # Extract column names from the SELECT clause
         columns = self._extract_select_columns(ctx)
         self.entities["columns"].extend(columns)

@@ -116,6 +116,42 @@ class TestMultipleContainsValidation:
         assert result["spatial_search"]["type"] == "ConeSearch"
 
 
+class TestSelectStarValidation:
+    """Test that SELECT * raises ValueError."""
+
+    def test_select_star_raises_value_error(self):
+        """Test that SELECT * raises ValueError."""
+        adql = """
+        SELECT *
+        FROM gaiadr3.gaia
+        WHERE 1 = CONTAINS(
+            POINT('ICRS', ra, dec),
+            CIRCLE('ICRS', 270.0, 23.0, 0.25)
+        )
+        """
+        with pytest.raises(ValueError, match="SELECT \\* is not supported"):
+            parse_adql_entities(adql)
+
+    def test_select_star_simple_query_raises_value_error(self):
+        """Test that a simple SELECT * query also raises ValueError."""
+        adql = "SELECT * FROM gaia"
+        with pytest.raises(ValueError, match="SELECT \\* is not supported"):
+            parse_adql_entities(adql)
+
+    def test_select_columns_succeeds(self):
+        """Test that selecting specific columns works."""
+        adql = """
+        SELECT ra, dec
+        FROM gaiadr3.gaia
+        WHERE 1 = CONTAINS(
+            POINT('ICRS', ra, dec),
+            CIRCLE('ICRS', 270.0, 23.0, 0.25)
+        )
+        """
+        result = parse_adql_entities(adql)
+        assert result["columns"] == ["ra", "dec"]
+
+
 class TestPointCirclePolygonOnlyInContains:
     """Test that POINT, CIRCLE, and POLYGON can only appear within a CONTAINS clause."""
 
