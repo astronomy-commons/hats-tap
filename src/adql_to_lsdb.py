@@ -181,21 +181,13 @@ class LSDBFormatListener(FormatListener):
 
     def _extract_function_args_from_context(self, ctx):
         """Extract function arguments from ANTLR context by traversing the parse tree."""
-        args = []
-
-        # Walk through the children of the context
-        for child in ctx.children:
-            # Look for terminal nodes that represent the actual values
-            if hasattr(child, "children"):
-                # This is a non-terminal, recurse into it
-                args.extend(self._extract_values_from_node(child))
-            else:
-                # Never mind punctuation like commas or parentheses
-                if (text := str(child)) not in ("(", ")", ","):
-                    args.append(text)
-
-        # Merge unary signs with following numeric tokens (e.g., '-', '10.5' -> '-10.5')
-        args = self._merge_unary_signs(args)
+        # NOTE: this is a quick and simple approach to retrieving numeric constants
+        # and their sign.  It's good enough for the simple examples we handle today,
+        # but will need to be elaborated and improved in order to truly handle
+        # expressions.
+        args = self._extract_values_from_node(ctx)
+        # Collect expressions into single arguments (e.g., '-', '10.5' -> '-10.5')
+        args = self._merge_expression(args)
         return args
 
     def _extract_values_from_node(self, node):
@@ -213,11 +205,18 @@ class LSDBFormatListener(FormatListener):
 
         return values
 
-    def _merge_unary_signs(self, tokens):
+    def _merge_expression(self, tokens):
         """
-        Merge unary '+' or '-' tokens with immediately following numeric tokens,
-        turning ['-', '10.5'] into ['-10.5'] so downstream parsing sees signed numbers.
+        Merge tokens describing an expression into a single string,
+        turning ['-', '10.5'] into ['-10.5'].  For numeric expressions
+        that don't involve variables, this should create a string
+        version of the equivalent expression in Python, one that
+        can be evalated.
         """
+        # At present, this only collects unary '+' and '-' signs as
+        # part of the expression, but it should be extended to do
+        # more.
+        # See https://github.com/astronomy-commons/hats-tap/issues/10
         merged = []
         i = 0
         while i < len(tokens):
@@ -380,8 +379,8 @@ class LSDBFormatListener(FormatListener):
                 if text:
                     tokens.append(text)
 
-        # Merge unary signs so we treat ['-', '30'] as ['-30']
-        tokens = self._merge_unary_signs(tokens)
+        # Merge expressions, e.g. ['-', '30'] becomes ['-30']
+        tokens = self._merge_expression(tokens)
 
         # Look for basic pattern: column operator value
         if len(tokens) == 3:
