@@ -17,6 +17,7 @@ classifiers = [
 dynamic = ["version"]
 requires-python = ">=3.9"
 dependencies = [
+    "queryparser-python3",
 ]
 
 [project.urls]
@@ -49,6 +50,7 @@ testpaths = [
     "src",
     "docs",
 ]
+pythonpath = ["src"]
 addopts = "--doctest-modules --doctest-glob=*.rst"
 
 [tool.ruff]
@@ -94,6 +96,8 @@ ignore = [
     "UP015", # Allow redundant open parameters
     "UP028", # Allow yield in for loop
 ]
+[tool.ruff.lint.per-file-ignores]
+"src/adql_to_lsdb.py" = ["N802"] # Must use camel-case to extend the parser
 
 
 [tool.coverage.run]
