@@ -614,11 +614,14 @@ def tables():
     return Response(xml, mimetype="application/xml")
 
 
-if __name__ == "__main__":
-    # Note: Run this script as a module to ensure proper imports:
-    #   python -m tap_server.tap_server
+def main():
+    """Main entry point for the TAP server."""
     port = 43213
     print("Starting TAP Server Prototype...")
     print(f"Server will be available at http://localhost:{port}")
     print("Press Ctrl+C to stop the server")
     app.run(host="0.0.0.0", port=port, debug=True)
+
+
+if __name__ == "__main__":
+    main()
