@@ -28,7 +28,9 @@ dependencies = [
 "Source Code" = "https://github.com/astronomy-commons/hats-tap"
 
 [project.scripts]
-tap-server = "tap_server.tap_server:main"
+tap-server = "hats_tap.tap_server:main"
+import-tap-schema = "hats_tap.import_tap_schema:main"
+adql-to-lsdb = "hats_tap.adql_to_lsdb:main"
 
 # On a mac, install optional dependencies with `pip install '.[dev]'` (include the single quotes)
 [project.optional-dependencies]
@@ -104,7 +106,7 @@ ignore = [
     "UP028", # Allow yield in for loop
 ]
 [tool.ruff.lint.per-file-ignores]
-"src/adql_to_lsdb.py" = ["N802"] # Must use camel-case to extend the parser
+"src/hats_tap/adql_to_lsdb.py" = ["N802"] # Must use camel-case to extend the parser
 
 
 [tool.coverage.run]

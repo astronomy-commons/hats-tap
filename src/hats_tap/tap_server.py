@@ -17,8 +17,9 @@ import xml.etree.ElementTree as ET  # noqa: N817
 from xml.dom import minidom
 
 import lsdb
-from adql_to_lsdb import parse_adql_entities
 from flask import Flask, Response, request
+
+from .adql_to_lsdb import parse_adql_entities
 
 # Import TAP schema database module
 from .tap_schema_db import TAPSchemaDatabase
