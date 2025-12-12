@@ -22,7 +22,7 @@ import logging
 import sys
 
 import pyvo
-from tap_schema_db import TAPSchemaDatabase
+from .tap_schema_db import TAPSchemaDatabase
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")

@@ -18,12 +18,12 @@ from adql_to_lsdb import parse_adql_entities
 from flask import Flask, Response, request
 
 # Import TAP schema database module
-from tap_schema_db import TAPSchemaDatabase
+from .tap_schema_db import TAPSchemaDatabase
 
 app = Flask(__name__)
 
 
-# What is actually getting called?
+# Log what the client is actually sending
 @app.before_request
 def log_request_info():
     """Help with debugging exactly what the client sent."""
@@ -352,7 +352,6 @@ def sync_query():
         if is_tap_schema_query(query):
             # Query the TAP_SCHEMA metadata
             data, result_columns = query_tap_schema(query)
-            # NOTE: Not sure this is quite right.  What comes back from caltech TAP?
             table_name = "tap_schema"
         else:
             # Parse the ADQL query to get entities
@@ -363,10 +362,18 @@ def sync_query():
             table = entities["tables"][0]
 
             # Handle regular catalog query
-            # Convert table name like 'gaiadr3.gaia' to URL format
-            # catalog_prefix = "https://data.lsdb.io/hats"
-            # catalog_prefix = "http://epyc.astro.washington.edu:43210/hats"
-            # catalog_prefix = "/epyc/data3/hats/catalogs"
+            # Convert table name like 'gaiadr3.gaia' to URL format.
+            # Use one of several catalog prefixes, depending on how
+            # this service is deployed:
+            #
+            # 1. If we take it right from public HTTP:
+            #    catalog_prefix = "https://data.lsdb.io/hats"
+            # 2. If we use the LSDB backend that does server-side filtering,
+            #    to save bandwidth:
+            #    catalog_prefix = "http://epyc.astro.washington.edu:43210/hats"
+            # 3. If we're running on epyc, this is the direct path to the data,
+            #    for best performance:
+            #    catalog_prefix = "/var/www/data.lsdb.io/html/hats"
             catalog_prefix = "/var/www/data.lsdb.io/html/hats"
             if "." in table:
                 parts = table.split(".")
