@@ -28,9 +28,9 @@ app = Flask(__name__)
 @app.before_request
 def log_request_info():
     """Help with debugging exactly what the client sent."""
-    print(f"Request URL: {request.url}")
-    print(f"Request Method: {request.method}")
-    print(f"Request Headers: {request.headers}")
+    app.logger.debug("Request URL: %s", request.url)
+    app.logger.debug("Request Method: %s", request.method)
+    app.logger.debug("Request Headers: %s", request.headers)
 
 
 # Initialize TAP schema database
@@ -58,7 +58,7 @@ def query_tap_schema(query_str: str):
         return data, result_columns
     except Exception as e:
         # If query fails, return empty result
-        print(f"Error querying TAP_SCHEMA: {e}")
+        app.logger.error("Error querying TAP_SCHEMA: %s. Query: %s", str(e), query_str, exc_info=True)
         return [], []
 
 
@@ -98,7 +98,7 @@ def get_column_metadata(table_name: str):
 
         return metadata
     except Exception as e:
-        print(f"Error fetching column metadata for {table_name}: {e}")
+        app.logger.error("Error fetching column metadata for table %s: %s", table_name, str(e), exc_info=True)
         return {}
 
 
@@ -191,9 +191,10 @@ def create_votable_response(data, columns, query_info, column_metadata=None):
         else:
             # Warn about missing metadata
             table_name = query_info.get("table", "unknown")
-            print(
-                f"WARNING: Missing metadata for column '{col}' "
-                f"in table '{table_name}'. Using fallback values."
+            app.logger.warning(
+                "Missing metadata for column '%s' in table '%s'. Using fallback values.",
+                col,
+                table_name,
             )
 
             # Fallback: Handle special astronomical columns with hard-coded values
@@ -331,18 +332,21 @@ def sync_query():
     request_type = params.get("REQUEST", "")
     if request_type != "doQuery":
         error_msg = f"Invalid REQUEST parameter: {request_type}. Must be 'doQuery'."
+        app.logger.warning("Invalid REQUEST parameter: '%s' (expected 'doQuery')", request_type)
         return Response(create_error_votable(error_msg), mimetype="application/xml", status=400)
 
     # Validate LANG parameter
     lang = params.get("LANG", "ADQL")
     if not re.match(r'^adql(-\d+\(\.\d+\)?)?', lang, re.IGNORECASE):
         error_msg = f"Unsupported query language: {lang}. Only ADQL is supported."
+        app.logger.warning("Unsupported query language requested: %s", lang)
         return Response(create_error_votable(error_msg), mimetype="application/xml", status=400)
 
     # Get query
     query = params.get("QUERY", "")
     if not query:
         error_msg = "Missing required parameter: QUERY"
+        app.logger.warning("Request is missing the required QUERY parameter")
         return Response(create_error_votable(error_msg), mimetype="application/xml", status=400)
 
     # Get format (default to votable)
@@ -473,10 +477,12 @@ def sync_query():
             return Response(xml_response, mimetype="application/xml")
         else:
             error_msg = f"Unsupported format: {output_format}"
+            app.logger.warning("Unsupported output format requested: %s", output_format)
             return Response(create_error_votable(error_msg, query), mimetype="application/xml", status=400)
 
     except Exception as e:
         error_msg = f"Error processing query: {str(e)}"
+        app.logger.error("Error processing query: %s. Query: %s", str(e), query, exc_info=True)
         return Response(create_error_votable(error_msg, query), mimetype="application/xml", status=500)
 
 
@@ -601,8 +607,7 @@ def generate_tables_xml():
         return format_xml_with_indentation(tableset)
 
     except Exception as e:
-        # Note: Using print() for consistency with existing error handling in this file
-        print(f"ERROR: Failed to generate tables XML from tap_schema.db: {e}")
+        app.logger.error("Failed to generate tables XML from tap_schema.db: %s", str(e), exc_info=True)
         # Return minimal valid XML on error
         return '<?xml version="1.0" encoding="UTF-8"?>\n<tableset xmlns="http://www.ivoa.net/xml/VODataService/v1.1"/>'
 
@@ -617,9 +622,9 @@ def tables():
 def main():
     """Main entry point for the TAP server."""
     port = 43213
-    print("Starting TAP Server Prototype...")
-    print(f"Server will be available at http://localhost:{port}")
-    print("Press Ctrl+C to stop the server")
+    app.logger.info("Starting TAP Server Prototype...")
+    app.logger.info("Server will be available at http://localhost:%d", port)
+    app.logger.info("Press Ctrl+C to stop the server")
     app.run(host="0.0.0.0", port=port, debug=True)
 
 
