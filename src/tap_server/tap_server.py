@@ -8,7 +8,9 @@ The server accepts ADQL queries and returns results in VOTable format.
 This prototype returns sample data instead of executing actual queries against a database.
 """
 
+import argparse
 import datetime
+import logging
 import os
 import re
 import xml.etree.ElementTree as ET  # noqa: N817
@@ -621,11 +623,23 @@ def tables():
 
 def main():
     """Main entry point for the TAP server."""
+    parser = argparse.ArgumentParser(description="TAP Server Prototype")
+    parser.add_argument("--debug", action="store_true", help="Enable debug mode with verbose logging")
+    args = parser.parse_args()
+
+    # Configure logging level based on debug flag
+    if args.debug:
+        app.logger.setLevel(logging.DEBUG)
+    else:
+        app.logger.setLevel(logging.INFO)
+
     port = 43213
     app.logger.info("Starting TAP Server Prototype...")
     app.logger.info("Server will be available at http://localhost:%d", port)
+    if args.debug:
+        app.logger.info("Debug mode enabled")
     app.logger.info("Press Ctrl+C to stop the server")
-    app.run(host="0.0.0.0", port=port, debug=True)
+    app.run(host="0.0.0.0", port=port, debug=args.debug)
 
 
 if __name__ == "__main__":
