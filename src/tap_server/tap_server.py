@@ -337,7 +337,7 @@ def sync_query():
 
     # Validate LANG parameter
     lang = params.get("LANG", "ADQL")
-    if not re.match(r'^adql(-\d+\(\.\d+\)?)?', lang, re.IGNORECASE):
+    if not re.match(r"^adql(-\d+\(\.\d+\)?)?", lang, re.IGNORECASE):
         error_msg = f"Unsupported query language: {lang}. Only ADQL is supported."
         app.logger.warning("Unsupported query language requested: %s", lang)
         return Response(create_error_votable(error_msg), mimetype="application/xml", status=400)

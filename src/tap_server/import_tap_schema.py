@@ -22,6 +22,7 @@ import logging
 import sys
 
 import pyvo
+
 from .tap_schema_db import TAPSchemaDatabase
 
 # Configure logging
