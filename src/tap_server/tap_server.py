@@ -10,6 +10,7 @@ This prototype returns sample data instead of executing actual queries against a
 
 import datetime
 import os
+import re
 import xml.etree.ElementTree as ET  # noqa: N817
 from xml.dom import minidom
 
@@ -334,7 +335,7 @@ def sync_query():
 
     # Validate LANG parameter
     lang = params.get("LANG", "ADQL")
-    if lang.upper() != "ADQL":
+    if not re.match(r'^adql(-\d+\(\.\d+\)?)?', lang, re.IGNORECASE):
         error_msg = f"Unsupported query language: {lang}. Only ADQL is supported."
         return Response(create_error_votable(error_msg), mimetype="application/xml", status=400)
 
@@ -410,7 +411,6 @@ def sync_query():
             # Good examples that match: "FROM ztf_dr14", "FROM gaia_dr3.gaia", "from MyTable WHERE"
             # Bad examples that don't match (return 'results'): "FROMAGE", "FROM WHERE", "FROM LIMIT"
             table_name = "results"
-            import re
 
             # SQL keywords that should not be considered table names
             sql_keywords = {
