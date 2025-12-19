@@ -11,6 +11,7 @@ Reference: https://www.ivoa.net/documents/TAP/20181024/PR-TAP-1.1-20181024.html
 """
 
 import sqlite3
+import threading
 from typing import Any
 
 
@@ -40,25 +41,34 @@ class TAPSchemaDatabase:
         """
         self.db_path = db_path
         self.qualified = qualified
-        self.connection = None
+        # Use thread-local storage for connections to ensure thread safety
+        self._local = threading.local()
+
+    @property
+    def connection(self):
+        """Get the connection for the current thread."""
+        if not hasattr(self._local, "connection") or self._local.connection is None:
+            return None
+        return self._local.connection
 
     def connect(self):
-        """Open a connection to the database."""
+        """Open a connection to the database for the current thread."""
         if self.connection is None:
-            self.connection = sqlite3.connect(self.db_path)
+            conn = sqlite3.connect(self.db_path, check_same_thread=False)
             # Enable foreign key constraints
-            self.connection.execute("PRAGMA foreign_keys = ON")
+            conn.execute("PRAGMA foreign_keys = ON")
             if self.qualified:
                 # Attach as TAP_SCHEMA for conformance with protocol
-                self.connection.execute("ATTACH DATABASE ? as ?;", (self.db_path, self.qualified))
+                conn.execute("ATTACH DATABASE ? as ?;", (self.db_path, self.qualified))
             # Use Row factory for dictionary-like access
-            self.connection.row_factory = sqlite3.Row
+            conn.row_factory = sqlite3.Row
+            self._local.connection = conn
 
     def close(self):
-        """Close the database connection."""
+        """Close the database connection for the current thread."""
         if self.connection:
             self.connection.close()
-            self.connection = None
+            self._local.connection = None
 
     def __enter__(self):
         """Context manager entry."""
