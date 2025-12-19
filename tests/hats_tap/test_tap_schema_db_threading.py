@@ -58,12 +58,14 @@ class TestThreadSafety:
     def test_each_thread_has_own_connection(self, temp_db):
         """Test that each thread has its own connection."""
         connection_ids = []
+        lock = threading.Lock()
 
         def get_connection_id():
             """Get the connection ID in a thread."""
             temp_db.connect()
-            # Get the connection object id (not thread-safe, but useful for testing)
-            connection_ids.append(id(temp_db.connection))
+            conn_id = id(temp_db.connection)
+            with lock:
+                connection_ids.append(conn_id)
 
         # Create multiple threads
         threads = [threading.Thread(target=get_connection_id) for _ in range(5)]

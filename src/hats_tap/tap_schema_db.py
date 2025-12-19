@@ -54,7 +54,7 @@ class TAPSchemaDatabase:
     def connect(self):
         """Open a connection to the database for the current thread."""
         if self.connection is None:
-            conn = sqlite3.connect(self.db_path, check_same_thread=False)
+            conn = sqlite3.connect(self.db_path)
             # Enable foreign key constraints
             conn.execute("PRAGMA foreign_keys = ON")
             if self.qualified:
