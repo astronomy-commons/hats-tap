@@ -10,7 +10,9 @@ key columns. It uses Python's built-in sqlite3 module for maximum portability.
 Reference: https://www.ivoa.net/documents/TAP/20181024/PR-TAP-1.1-20181024.html
 """
 
+import re
 import sqlite3
+import threading
 from typing import Any
 
 
@@ -40,25 +42,41 @@ class TAPSchemaDatabase:
         """
         self.db_path = db_path
         self.qualified = qualified
-        self.connection = None
+        # Use thread-local storage for connections to ensure thread safety
+        self._local = threading.local()
+
+    @property
+    def connection(self):
+        """Get the connection for the current thread."""
+        if not hasattr(self._local, "connection") or self._local.connection is None:
+            return None
+        return self._local.connection
 
     def connect(self):
-        """Open a connection to the database."""
+        """Open a connection to the database for the current thread."""
         if self.connection is None:
-            self.connection = sqlite3.connect(self.db_path)
+            conn = sqlite3.connect(self.db_path)
             # Enable foreign key constraints
-            self.connection.execute("PRAGMA foreign_keys = ON")
+            conn.execute("PRAGMA foreign_keys = ON")
             if self.qualified:
                 # Attach as TAP_SCHEMA for conformance with protocol
-                self.connection.execute("ATTACH DATABASE ? as ?;", (self.db_path, self.qualified))
+                # NOTE: while sqlite3 will *permit* us to interpolate
+                # the qualified name as a value, with the ? indicator,
+                # it's not really the right way to do it, because the
+                # qualified name should be an identifier.  Validate
+                # this and then interpolate it normally.
+                if not re.match(r"^[A-Za-z_]\w*$", self.qualified):
+                    raise ValueError(f"Qualified name '{self.qualified} is not an ID")
+                conn.execute(f"ATTACH DATABASE ? as {self.qualified};", (self.db_path,))
             # Use Row factory for dictionary-like access
-            self.connection.row_factory = sqlite3.Row
+            conn.row_factory = sqlite3.Row
+            self._local.connection = conn
 
     def close(self):
-        """Close the database connection."""
+        """Close the database connection for the current thread."""
         if self.connection:
             self.connection.close()
-            self.connection = None
+            self._local.connection = None
 
     def __enter__(self):
         """Context manager entry."""
