@@ -3,7 +3,6 @@
 import pathlib
 
 import pytest
-
 from hats_tap.adql_to_lsdb import parse_adql_entities
 
 
@@ -13,7 +12,7 @@ class TestSampleQueries:
     @pytest.fixture
     def samples_dir(self):
         """Get the path to the samples directory."""
-        return pathlib.Path(__file__).parent.parent.parent / "src" / "samples"
+        return pathlib.Path(__file__).parent.parent.parent / "src" / "hats_tap" / "samples"
 
     def test_sample1_parses(self, samples_dir):
         """Test sample1.adql parses correctly with expected entities."""
