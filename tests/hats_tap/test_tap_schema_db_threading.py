@@ -4,7 +4,6 @@ import sqlite3
 import threading
 
 import pytest
-
 from hats_tap.tap_schema_db import TAPSchemaDatabase
 
 
