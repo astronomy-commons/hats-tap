@@ -10,6 +10,7 @@ key columns. It uses Python's built-in sqlite3 module for maximum portability.
 Reference: https://www.ivoa.net/documents/TAP/20181024/PR-TAP-1.1-20181024.html
 """
 
+import re
 import sqlite3
 import threading
 from typing import Any
@@ -59,7 +60,14 @@ class TAPSchemaDatabase:
             conn.execute("PRAGMA foreign_keys = ON")
             if self.qualified:
                 # Attach as TAP_SCHEMA for conformance with protocol
-                conn.execute("ATTACH DATABASE ? as ?;", (self.db_path, self.qualified))
+                # NOTE: while sqlite3 will *permit* us to interpolate
+                # the qualified name as a value, with the ? indicator,
+                # it's not really the right way to do it, because the
+                # qualified name should be an identifier.  Validate
+                # this and then interpolate it normally.
+                if not re.match(r"^[A-Za-z_]\w*$", self.qualified):
+                    raise ValueError(f"Qualified name '{self.qualified} is not an ID")
+                conn.execute(f"ATTACH DATABASE ? as {self.qualified};", (self.db_path,))
             # Use Row factory for dictionary-like access
             conn.row_factory = sqlite3.Row
             self._local.connection = conn
