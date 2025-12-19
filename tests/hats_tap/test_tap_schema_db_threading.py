@@ -61,10 +61,11 @@ class TestThreadSafety:
 
         def get_connection_id():
             """Get the connection ID in a thread."""
-            temp_db.connect()
-            conn_id = id(temp_db.connection)
-            with lock:
-                connection_ids.append(conn_id)
+            with temp_db:
+                temp_db.connect()
+                conn_id = id(temp_db.connection)
+                with lock:
+                    connection_ids.append(conn_id)
 
         # Create multiple threads
         threads = [threading.Thread(target=get_connection_id) for _ in range(5)]
