@@ -33,7 +33,7 @@ def create_app():
 
 
 # Default WSGI callable name expected by gunicorn when no object is specified.
-application = create_app()
+application = app
 
 
 # Log what the client is actually sending
