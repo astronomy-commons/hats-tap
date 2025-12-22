@@ -42,6 +42,9 @@ dev = [
     "pytest-cov", # Used to report total code coverage
     "ruff", # Used for static linting of files
 ]
+server = [
+    "gunicorn>=22.0.0", # Optional WSGI server for production use
+]
 
 [build-system]
 requires = [

@@ -50,9 +50,10 @@ Notes:
 
 ## Running the TAP server with gunicorn
 
-After installation, you can serve the TAP application with gunicorn by pointing
-it at the provided WSGI callable:
+Install the optional server extra (or install `gunicorn` separately), then run gunicorn
+against the provided WSGI callable:
 
 ```
+pip install 'hats-tap[server]'
 gunicorn "hats_tap.tap_server:application" --bind 0.0.0.0:43213
 ```
