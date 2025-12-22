@@ -27,6 +27,15 @@ from .tap_schema_db import TAPSchemaDatabase
 app = Flask(__name__)
 
 
+def create_app():
+    """Return the Flask application for use with WSGI servers such as gunicorn."""
+    return app
+
+
+# Default WSGI callable name expected by gunicorn when no object is specified.
+application = app
+
+
 # Log what the client is actually sending
 @app.before_request
 def log_request_info():
