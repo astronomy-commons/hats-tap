@@ -699,9 +699,7 @@ def table_details(table_name: str):
     xml, found = generate_tables_xml(table_filter=table_name)
     if not found:
         app.logger.warning("Requested table metadata for unknown table '%s'", table_name)
-        return Response(
-            f"Table metadata not found for table: {table_name}", mimetype="text/plain", status=404
-        )
+        return Response("Table metadata not found", mimetype="text/plain", status=404)
     return Response(xml, mimetype="application/xml")
 
 

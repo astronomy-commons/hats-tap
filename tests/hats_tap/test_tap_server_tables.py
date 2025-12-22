@@ -59,28 +59,36 @@ def test_tables_endpoint_includes_columns_and_keys(client_with_metadata):
     table_elem, ns, _ = _get_table_element(response.data, "gaia")
     assert table_elem is not None
 
-    column_names = {
-        name_elem.text
-        for col in table_elem.findall("v:column", ns)
-        if (name_elem := col.find("v:name", ns)) is not None
-    }
+    column_names = set()
+    for col in table_elem.findall("v:column", ns):
+        name_elem = col.find("v:name", ns)
+        if name_elem is not None:
+            column_names.add(name_elem.text)
     assert {"source_id", "parent_id", "ra", "dec"}.issubset(column_names)
 
     fk_elems = table_elem.findall("v:foreignKey", ns)
     assert fk_elems
-    target_tables = {
-        target_elem.text for fk in fk_elems if (target_elem := fk.find("v:targetTable", ns)) is not None
-    }
+    target_tables = set()
+    for fk in fk_elems:
+        target_elem = fk.find("v:targetTable", ns)
+        if target_elem is not None:
+            target_tables.add(target_elem.text)
     assert "gaia_dr3.parents" in target_tables
 
     fk_columns = fk_elems[0].findall("v:fkColumn", ns)
-    assert any(
-        (from_col := fk_col.find("v:fromColumn", ns)) is not None
-        and (target_col := fk_col.find("v:targetColumn", ns)) is not None
-        and from_col.text == "parent_id"
-        and target_col.text == "id"
-        for fk_col in fk_columns
-    )
+    found_fk = False
+    for fk_col in fk_columns:
+        from_col = fk_col.find("v:fromColumn", ns)
+        target_col = fk_col.find("v:targetColumn", ns)
+        if (
+            from_col is not None
+            and target_col is not None
+            and from_col.text == "parent_id"
+            and target_col.text == "id"
+        ):
+            found_fk = True
+            break
+    assert found_fk
 
 
 def test_specific_table_endpoint_returns_metadata(client_with_metadata):
@@ -94,9 +102,9 @@ def test_specific_table_endpoint_returns_metadata(client_with_metadata):
     tables = root.findall(".//v:table", ns)
     assert len(tables) == 1
 
-    column_names = {
-        name_elem.text
-        for col in table_elem.findall("v:column", ns)
-        if (name_elem := col.find("v:name", ns)) is not None
-    }
+    column_names = set()
+    for col in table_elem.findall("v:column", ns):
+        name_elem = col.find("v:name", ns)
+        if name_elem is not None:
+            column_names.add(name_elem.text)
     assert "source_id" in column_names
