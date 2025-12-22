@@ -47,3 +47,12 @@ Notes:
    into documentation for ReadTheDocs works as expected. For more information, see
    the Python Project Template documentation on
    [Sphinx and Python Notebooks](https://lincc-ppt.readthedocs.io/en/latest/practices/sphinx.html#python-notebooks)
+
+## Running the TAP server with gunicorn
+
+After installation, you can serve the TAP application with gunicorn by pointing
+it at the provided WSGI callable:
+
+```
+gunicorn "hats_tap.tap_server:application" --bind 0.0.0.0:43213
+```
