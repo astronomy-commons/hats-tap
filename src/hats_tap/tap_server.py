@@ -538,23 +538,59 @@ def capabilities():
     return Response(xml, mimetype="application/xml")
 
 
-def generate_tables_xml():
+def generate_tables_xml(table_filter: str | None = None):
     """
     Generate tables metadata XML from tap_schema.db.
 
+    Args:
+        table_filter: Optional schema-qualified table name to limit output
+
     Returns:
-        String containing tableset XML with schemas, tables, and columns
+        Tuple of (XML string, boolean indicating whether any tables were added)
     """
     # Create tableset root element
     tableset = ET.Element("tableset", {"xmlns": "http://www.ivoa.net/xml/VODataService/v1.1"})
+    filter_schema = None
+    filter_table = None
+    if table_filter:
+        if "." in table_filter:
+            filter_schema, filter_table = table_filter.split(".", 1)
+        else:
+            filter_table = table_filter
+
+    tables_added = False
 
     try:
         # Query schemas from database
         tap_schema_db.connect()
-        schemas = tap_schema_db.query("SELECT schema_name, description FROM schemas ORDER BY schema_name")
+        schema_query = "SELECT schema_name, description FROM schemas ORDER BY schema_name"
+        schema_params = ()
+        if filter_schema:
+            schema_query = (
+                "SELECT schema_name, description FROM schemas WHERE schema_name = ? ORDER BY schema_name"
+            )
+            schema_params = (filter_schema,)
+
+        schemas = tap_schema_db.query(schema_query, schema_params or None)
 
         for schema_row in schemas:
             schema_name = schema_row["schema_name"]
+
+            # Query tables for this schema
+            table_query = (
+                "SELECT table_name, description FROM tables WHERE schema_name = ? ORDER BY table_name"
+            )
+            table_params = [schema_name]
+            if filter_table:
+                table_query = (
+                    "SELECT table_name, description FROM tables "
+                    "WHERE schema_name = ? AND table_name = ? ORDER BY table_name"
+                )
+                table_params.append(filter_table)
+
+            tables = tap_schema_db.query(table_query, tuple(table_params))
+            if not tables:
+                continue
 
             # Create schema element
             schema_elem = ET.SubElement(tableset, "schema")
@@ -565,14 +601,9 @@ def generate_tables_xml():
                 desc_elem = ET.SubElement(schema_elem, "description")
                 desc_elem.text = schema_row["description"]
 
-            # Query tables for this schema
-            tables = tap_schema_db.query(
-                "SELECT table_name, description FROM tables WHERE schema_name = ? ORDER BY table_name",
-                (schema_name,),
-            )
-
             for table_row in tables:
                 table_name = table_row["table_name"]
+                tables_added = True
 
                 # Create table element
                 table_elem = ET.SubElement(schema_elem, "table")
@@ -615,19 +646,64 @@ def generate_tables_xml():
                         col_desc_elem = ET.SubElement(column_elem, "description")
                         col_desc_elem.text = column_row["description"]
 
+                # Query foreign keys for this table (from_table side)
+                keys = tap_schema_db.query(
+                    "SELECT key_id, target_table, description FROM keys WHERE from_table = ? ORDER BY key_id",
+                    (full_table_name,),
+                )
+
+                for key_row in keys:
+                    fk_elem = ET.SubElement(table_elem, "foreignKey")
+                    if key_row.get("key_id"):
+                        fk_elem.set("id", key_row["key_id"])
+
+                    target_elem = ET.SubElement(fk_elem, "targetTable")
+                    target_elem.text = key_row["target_table"]
+
+                    key_columns = tap_schema_db.query(
+                        "SELECT from_column, target_column FROM key_columns WHERE key_id = ? ORDER BY from_column",
+                        (key_row["key_id"],),
+                    )
+
+                    for key_column_row in key_columns:
+                        fk_col_elem = ET.SubElement(fk_elem, "fkColumn")
+
+                        from_col_elem = ET.SubElement(fk_col_elem, "fromColumn")
+                        from_col_elem.text = key_column_row["from_column"]
+
+                        target_col_elem = ET.SubElement(fk_col_elem, "targetColumn")
+                        target_col_elem.text = key_column_row["target_column"]
+
+                    if key_row.get("description"):
+                        key_desc_elem = ET.SubElement(fk_elem, "description")
+                        key_desc_elem.text = key_row["description"]
+
         # Format and return the XML with proper indentation
-        return format_xml_with_indentation(tableset)
+        return format_xml_with_indentation(tableset), tables_added
 
     except Exception as e:
         app.logger.error("Failed to generate tables XML from tap_schema.db: %s", str(e), exc_info=True)
         # Return minimal valid XML on error
-        return '<?xml version="1.0" encoding="UTF-8"?>\n<tableset xmlns="http://www.ivoa.net/xml/VODataService/v1.1"/>'
+        return (
+            '<?xml version="1.0" encoding="UTF-8"?>\n<tableset xmlns="http://www.ivoa.net/xml/VODataService/v1.1"/>',
+            tables_added,
+        )
 
 
 @app.route("/tables")
 def tables():
     """Return available tables metadata from tap_schema.db."""
-    xml = generate_tables_xml()
+    xml, _ = generate_tables_xml()
+    return Response(xml, mimetype="application/xml")
+
+
+@app.route("/tables/<path:table_name>")
+def table_details(table_name: str):
+    """Return metadata for a specific table from tap_schema.db."""
+    xml, found = generate_tables_xml(table_filter=table_name)
+    if not found:
+        app.logger.warning("Requested table metadata for unknown table '%s'", table_name)
+        return Response(f"Table '{table_name}' not found", mimetype="text/plain", status=404)
     return Response(xml, mimetype="application/xml")
 
 
