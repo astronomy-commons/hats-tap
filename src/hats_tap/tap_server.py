@@ -571,7 +571,7 @@ def generate_tables_xml(table_filter: str | None = None):
             )
             schema_params = (filter_schema,)
 
-        schemas = tap_schema_db.query(schema_query, schema_params or None)
+        schemas = tap_schema_db.query(schema_query, schema_params)
 
         for schema_row in schemas:
             schema_name = schema_row["schema_name"]
@@ -686,7 +686,7 @@ def generate_tables_xml(table_filter: str | None = None):
         # Return minimal valid XML on error
         return (
             '<?xml version="1.0" encoding="UTF-8"?>\n<tableset xmlns="http://www.ivoa.net/xml/VODataService/v1.1"/>',
-            tables_added,
+            False,
         )
 
 
