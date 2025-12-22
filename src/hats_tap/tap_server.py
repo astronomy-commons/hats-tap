@@ -577,16 +577,12 @@ def generate_tables_xml(table_filter: str | None = None):
             schema_name = schema_row["schema_name"]
 
             # Query tables for this schema
-            table_query = (
-                "SELECT table_name, description FROM tables WHERE schema_name = ? ORDER BY table_name"
-            )
+            table_query = "SELECT table_name, description FROM tables WHERE schema_name = ?"
             table_params = [schema_name]
             if filter_table:
-                table_query = (
-                    "SELECT table_name, description FROM tables "
-                    "WHERE schema_name = ? AND table_name = ? ORDER BY table_name"
-                )
+                table_query += " AND table_name = ?"
                 table_params.append(filter_table)
+            table_query += " ORDER BY table_name"
 
             tables = tap_schema_db.query(table_query, tuple(table_params))
             if not tables:
@@ -703,7 +699,9 @@ def table_details(table_name: str):
     xml, found = generate_tables_xml(table_filter=table_name)
     if not found:
         app.logger.warning("Requested table metadata for unknown table '%s'", table_name)
-        return Response(f"Table '{table_name}' not found", mimetype="text/plain", status=404)
+        return Response(
+            f"Table metadata not found for table: {table_name}", mimetype="text/plain", status=404
+        )
     return Response(xml, mimetype="application/xml")
 
 
