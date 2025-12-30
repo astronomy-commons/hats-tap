@@ -29,6 +29,9 @@ from .tap_schema_db import TAPSchemaDatabase
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
+# Default schema name to use when remote table has no schema
+DEFAULT_SCHEMA_NAME = "public"
+
 
 class TAPSchemaImporter:
     """
@@ -140,21 +143,27 @@ class TAPSchemaImporter:
 
     def import_schema(self, schema_name: str):
         """
-        Import a specific schema from the external TAP server.
+        Import a specific schema from the external TAP server, or create it locally if not found.
 
         Args:
-            schema_name: Name of the schema to import
+            schema_name: Name of the schema to import or create
         """
         logger.info(f"Importing schema: {schema_name}")
 
-        # Query for the schema
+        # Query for the schema on the remote server
         escaped_schema = self._escape_adql_string(schema_name)
         schemas = self.query_tap_schema_table("schemas", f"schema_name = '{escaped_schema}'")
 
         if not schemas:
             logger.warning(f"Schema '{schema_name}' not found on TAP server")
-            # Try to import it anyway as some servers might not have TAP_SCHEMA.schemas
-            logger.info(f"Attempting to import tables from schema '{schema_name}' anyway...")
+            # Create schema locally anyway (this is needed when using custom local schema names)
+            logger.info(f"Creating schema '{schema_name}' locally...")
+            self.db.insert_schema(
+                schema_name=schema_name,
+                description=f"Local schema for imported tables",
+                utype=None,
+            )
+            logger.info("✓ Created local schema")
         else:
             schema_data = schemas[0]
             logger.info(f"Found schema: {schema_data.get('schema_name')}")
@@ -338,7 +347,9 @@ class TAPSchemaImporter:
             table_name: Name of the table to import (e.g., 'gaia_dr3_source')
             include_keys: Whether to import foreign key relationships
             local_table_name: Optional name to use when storing the table locally.
-                            If not provided, the original table name is used.
+                            Can be a simple name (e.g., 'my_table') or schema-qualified
+                            (e.g., 'my_schema.my_table'). If not provided, the original
+                            table name is used.
 
         Returns:
             True if import successful, False otherwise
@@ -355,36 +366,58 @@ class TAPSchemaImporter:
                 return False
 
             table_data = tables[0]
-            schema_name = table_data.get("schema_name")
+            remote_schema_name = table_data.get("schema_name")
 
-            logger.info(f"Found table '{table_name}' in schema '{schema_name}'")
+            logger.info(f"Found table '{table_name}' in schema '{remote_schema_name}'")
 
-            # Import the schema first
-            self.import_schema(schema_name)
+            # Parse local_table_name to determine local schema and table name
+            if local_table_name:
+                if "." in local_table_name:
+                    # Schema-qualified name like "gaia_dr3.gaia"
+                    # Split on first dot only (TAP uses schema.table format)
+                    parts = local_table_name.split(".", 1)
+                    if len(parts) != 2 or not parts[0] or not parts[1]:
+                        raise ValueError(
+                            f"Invalid schema-qualified table name: '{local_table_name}'. "
+                            "Expected format: 'schema.table'"
+                        )
+                    local_schema_name, local_simple_table_name = parts
+                else:
+                    # Simple table name, use the remote schema (default to 'public' if None)
+                    local_schema_name = remote_schema_name if remote_schema_name else DEFAULT_SCHEMA_NAME
+                    local_simple_table_name = local_table_name
+            else:
+                # Use remote schema and table name (default to 'public' if schema is None)
+                local_schema_name = remote_schema_name if remote_schema_name else DEFAULT_SCHEMA_NAME
+                local_simple_table_name = table_data.get("table_name")
 
-            # Determine the name to use for storing the table locally
-            stored_table_name = local_table_name if local_table_name else table_data.get("table_name")
+            # Import the schema (create it if it doesn't exist)
+            self.import_schema(local_schema_name)
 
-            # Insert the table metadata
+            # Insert the table metadata with schema and table name separated
             self.db.insert_table(
-                schema_name=schema_name,
-                table_name=stored_table_name,
+                schema_name=local_schema_name,
+                table_name=local_simple_table_name,
                 table_type=table_data.get("table_type", "table"),
                 description=table_data.get("description"),
                 utype=table_data.get("utype"),
             )
 
-            # Use table name as-is from the TAP server (not schema.table format)
-            # Some TAP servers store table_name in columns without schema prefix
+            # Build the fully qualified local table name for column storage
+            local_qualified_table_name = f"{local_schema_name}.{local_simple_table_name}"
+
+            # Log what was imported
             if local_table_name:
                 logger.info(
-                    f"✓ Imported table: {table_name} as '{stored_table_name}' (schema: {schema_name})"
+                    f"✓ Imported table: {table_name} as '{local_qualified_table_name}' "
+                    f"(local schema: {local_schema_name}, local table: {local_simple_table_name})"
                 )
             else:
-                logger.info(f"✓ Imported table: {table_name} (schema: {schema_name})")
+                logger.info(f"✓ Imported table: {table_name} (schema: {local_schema_name})")
 
-            # Import columns for this table using the table name as-is
-            self.import_columns([table_name], local_table_name=stored_table_name)
+            # Import columns for this table using the remote table name for lookup
+            # but store with the local qualified name
+            self.import_columns([table_name], local_table_name=local_qualified_table_name)
 
             # Import foreign keys if requested
             if include_keys:
@@ -392,8 +425,8 @@ class TAPSchemaImporter:
 
             logger.info("=" * 70)
             logger.info("Import completed successfully!")
-            logger.info(f"  Table: {table_name}")
-            logger.info(f"  Schema: {schema_name}")
+            logger.info(f"  Remote table: {table_name}")
+            logger.info(f"  Local table: {local_qualified_table_name}")
             logger.info("=" * 70)
 
             return True
