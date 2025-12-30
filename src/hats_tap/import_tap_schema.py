@@ -29,6 +29,9 @@ from .tap_schema_db import TAPSchemaDatabase
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
+# Default schema name to use when remote table has no schema
+DEFAULT_SCHEMA_NAME = "public"
+
 
 class TAPSchemaImporter:
     """
@@ -371,14 +374,21 @@ class TAPSchemaImporter:
             if local_table_name:
                 if "." in local_table_name:
                     # Schema-qualified name like "gaia_dr3.gaia"
-                    local_schema_name, local_simple_table_name = local_table_name.split(".", 1)
+                    # Split on first dot only (TAP uses schema.table format)
+                    parts = local_table_name.split(".", 1)
+                    if len(parts) != 2 or not parts[0] or not parts[1]:
+                        raise ValueError(
+                            f"Invalid schema-qualified table name: '{local_table_name}'. "
+                            "Expected format: 'schema.table'"
+                        )
+                    local_schema_name, local_simple_table_name = parts
                 else:
                     # Simple table name, use the remote schema (default to 'public' if None)
-                    local_schema_name = remote_schema_name if remote_schema_name else "public"
+                    local_schema_name = remote_schema_name if remote_schema_name else DEFAULT_SCHEMA_NAME
                     local_simple_table_name = local_table_name
             else:
                 # Use remote schema and table name (default to 'public' if schema is None)
-                local_schema_name = remote_schema_name if remote_schema_name else "public"
+                local_schema_name = remote_schema_name if remote_schema_name else DEFAULT_SCHEMA_NAME
                 local_simple_table_name = table_data.get("table_name")
 
             # Import the schema (create it if it doesn't exist)

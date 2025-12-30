@@ -377,12 +377,70 @@ def test_import_table_without_local_name(tmp_path, monkeypatch):
     assert success
 
     # Verify table was inserted with original schema and table name
-    tables = db.query("SELECT * FROM tables WHERE schema_name = 'gaia'")
+    tables = db.query("SELECT * FROM tables WHERE schema_name = ?", ("gaia",))
     assert len(tables) == 1
     assert tables[0]["schema_name"] == "gaia"
     assert tables[0]["table_name"] == "gaia_dr3_source"
 
     # Verify columns were inserted with fully qualified table name
-    columns = db.query("SELECT * FROM columns WHERE table_name = 'gaia.gaia_dr3_source'")
+    columns = db.query("SELECT * FROM columns WHERE table_name = ?", ("gaia.gaia_dr3_source",))
     assert len(columns) == 1
     assert columns[0]["column_name"] == "source_id"
+
+
+def test_invalid_local_table_name_raises_error(tmp_path):
+    """Test that invalid schema-qualified names raise appropriate errors."""
+    from hats_tap.import_tap_schema import TAPSchemaImporter
+
+    # Setup database
+    db_path = tmp_path / "test_tap_schema.db"
+    db = TAPSchemaDatabase(str(db_path))
+    db.initialize_schema()
+
+    # Create mock TAP service
+    mock_service = MockTAPService()
+
+    # Mock response for table lookup
+    mock_service.add_response(
+        "FROM TAP_SCHEMA.tables",
+        [
+            MockRow(
+                {
+                    "schema_name": "gaia",
+                    "table_name": "gaia_dr3_source",
+                    "table_type": "table",
+                    "description": "Gaia DR3 source catalog",
+                    "utype": None,
+                }
+            )
+        ],
+        ["schema_name", "table_name", "table_type", "description", "utype"],
+    )
+
+    # Create importer
+    importer = TAPSchemaImporter("http://mock.tap.service/TAP", str(db_path))
+    importer.service = mock_service
+    importer.db = db
+    importer.db.connect()
+
+    # Test with empty schema name
+    try:
+        importer.import_table_by_name(
+            table_name="gaia_dr3_source",
+            include_keys=False,
+            local_table_name=".table",  # Empty schema
+        )
+        assert False, "Should have raised ValueError"
+    except ValueError as e:
+        assert "Invalid schema-qualified table name" in str(e)
+
+    # Test with empty table name
+    try:
+        importer.import_table_by_name(
+            table_name="gaia_dr3_source",
+            include_keys=False,
+            local_table_name="schema.",  # Empty table
+        )
+        assert False, "Should have raised ValueError"
+    except ValueError as e:
+        assert "Invalid schema-qualified table name" in str(e)
