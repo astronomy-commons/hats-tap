@@ -294,10 +294,10 @@ def index():
         <h2>Example Query</h2>
         <p>Submit an ADQL query to the /sync endpoint:</p>
         <pre>
-curl -X POST http://localhost:5000/sync \\
-  -d "REQUEST=doQuery" \\
-  -d "LANG=ADQL" \\
-  -d "QUERY=SELECT TOP 10 ra, dec, mag FROM ztf_dr14 WHERE mag < 20"
+curl -X POST https://tap.data.lsdb.io/sync \
+  -d "REQUEST=doQuery" \
+  -d "LANG=ADQL" \
+  -d "QUERY=SELECT TOP 10 ra, dec, mean_mag_g, mean_mag_r, mean_mag_i FROM ztf_dr14 WHERE mean_mag_r < 20"
         </pre>
 
         <h2>Supported ADQL Features</h2>
