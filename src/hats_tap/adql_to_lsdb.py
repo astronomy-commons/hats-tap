@@ -60,6 +60,113 @@ class LSDBFormatListener(FormatListener):
         self._in_where = False
         self._current_conditions = []
 
+    def _normalize_identifier(self, identifier: str) -> str:
+        """Normalize an ADQL identifier to a bare LSDB column name.
+
+        Motivation
+        ----------
+        ADQL allows identifiers to be qualified and/or quoted, e.g. ``obj.ra`` or
+        ``"ra"``. In this project we translate WHERE predicates into LSDB ``filters``
+        of the form ``(column, operator, value)``, and LSDB expects the *bare* column
+        name as it appears in the catalog schema (e.g. ``ra``, not ``obj.ra``).
+
+        This normalization is also used by the BoxSearch detection, which looks for
+        simple predicates on the ``ra`` and ``dec`` columns; without stripping an alias
+        prefix, queries like ``WHERE obj.ra >= 10`` would not be recognized.
+
+        Notes
+        -----
+        This is intentionally conservative: it only strips surrounding quotes and drops
+        leading qualifiers by taking the last dotted segment.
+        """
+        if not isinstance(identifier, str):
+            return identifier
+        ident = identifier.strip()
+        # Strip double/single quotes around identifiers if present.
+        if (ident.startswith('"') and ident.endswith('"')) or (ident.startswith("'") and ident.endswith("'")):
+            ident = ident[1:-1]
+        # Drop schema/table/alias qualification.
+        if "." in ident:
+            ident = ident.split(".")[-1]
+        return ident
+
+    def _extract_box_search_from_conditions(self, conditions: list[tuple]) -> tuple[dict | None, list[tuple]]:
+        """Detect a simple RA/Dec box search and remove its predicates from conditions.
+
+        Recognizes AND-only ranges of the form:
+        - ra >= lo AND ra < hi   (also supports <=, >)
+        - dec >= lo AND dec < hi (also supports <=, >)
+
+        If dec bounds are omitted entirely, defaults to (-90, 90).
+        """
+        if not conditions:
+            return None, conditions
+
+        def is_numeric(value) -> bool:
+            return isinstance(value, (int, float))
+
+        ra_lowers: list[tuple[float, tuple]] = []
+        ra_uppers: list[tuple[float, tuple]] = []
+        dec_lowers: list[tuple[float, tuple]] = []
+        dec_uppers: list[tuple[float, tuple]] = []
+
+        for cond in conditions:
+            if not isinstance(cond, tuple) or len(cond) != 3:
+                continue
+            col, op, val = cond
+            col_norm = self._normalize_identifier(col).lower()
+            if col_norm not in ("ra", "dec"):
+                continue
+            if not is_numeric(val):
+                continue
+            if op in (">", ">="):
+                if col_norm == "ra":
+                    ra_lowers.append((float(val), cond))
+                else:
+                    dec_lowers.append((float(val), cond))
+            elif op in ("<", "<="):
+                if col_norm == "ra":
+                    ra_uppers.append((float(val), cond))
+                else:
+                    dec_uppers.append((float(val), cond))
+
+        # Require an RA range.
+        if not ra_lowers or not ra_uppers:
+            return None, conditions
+
+        ra_lo, ra_lo_cond = max(ra_lowers, key=lambda x: x[0])
+        ra_hi, ra_hi_cond = min(ra_uppers, key=lambda x: x[0])
+        if not (ra_lo < ra_hi):
+            return None, conditions
+
+        # DEC: either fully specified, or absent.
+        has_any_dec = bool(dec_lowers or dec_uppers)
+        if has_any_dec and not (dec_lowers and dec_uppers):
+            return None, conditions
+
+        if dec_lowers and dec_uppers:
+            dec_lo, dec_lo_cond = max(dec_lowers, key=lambda x: x[0])
+            dec_hi, dec_hi_cond = min(dec_uppers, key=lambda x: x[0])
+            if not (dec_lo < dec_hi):
+                return None, conditions
+        else:
+            dec_lo, dec_hi = -90.0, 90.0
+            dec_lo_cond = dec_hi_cond = None
+
+        consumed = {ra_lo_cond, ra_hi_cond}
+        if dec_lo_cond is not None:
+            consumed.add(dec_lo_cond)
+        if dec_hi_cond is not None:
+            consumed.add(dec_hi_cond)
+
+        remaining = [c for c in conditions if c not in consumed]
+        box = {
+            "type": "BoxSearch",
+            "ra": (ra_lo, ra_hi),
+            "dec": (dec_lo, dec_hi),
+        }
+        return box, remaining
+
     def enterContains(self, ctx):
         """Enter a CONTAINS clause - set context flag."""
         self._contains_count += 1
@@ -334,11 +441,20 @@ class LSDBFormatListener(FormatListener):
     def exitWhere_clause(self, ctx):
         """Exit WHERE clause - finalize condition parsing."""
         if self._in_where:
+            # Convert simple RA/Dec range predicates into a BoxSearch when possible.
+            # Only do this if we don't already have a spatial CONTAINS search.
+            conditions = list(self._current_conditions)
+            if not self.entities.get("spatial_search"):
+                box, remaining = self._extract_box_search_from_conditions(conditions)
+                if box is not None:
+                    self.entities["spatial_search"] = box
+                    conditions = remaining
+
             # Store conditions in simple format for AND-only cases
-            if self._current_conditions:
+            if conditions:
                 # For simple AND conditions, store as single list
                 # When we add OR support, we'll use full DNF: [[cond1, cond2], [cond3, cond4]]
-                self.entities["conditions"] = self._current_conditions
+                self.entities["conditions"] = conditions
 
             # Reset context
             self._in_where = False
@@ -390,6 +506,7 @@ class LSDBFormatListener(FormatListener):
             for i, token in enumerate(tokens):
                 if token in sql_operators and i > 0 and i < len(tokens) - 1:
                     column = tokens[i - 1]
+                    column = self._normalize_identifier(column)
                     py_operator = self._translate_operator(token)
                     value = self._parse_value(tokens[i + 1])
                     return (column, py_operator, value)
@@ -573,42 +690,40 @@ def parse_adql_entities(adql: str) -> dict:
 
 
 def format_lsdb_code(entities: dict) -> str:
-    """
-    Convert parsed ADQL entities to Python code that uses LSDB calls.
+    """Convert parsed ADQL entities to Python code that uses LSDB calls.
 
     Parameters
     ----------
     entities : dict
         Dictionary containing parsed ADQL entities with keys:
-        'tables', 'columns', 'spatial_search', 'conditions', 'limits'.
+        'tables', 'columns', 'spatial_search', 'conditions', 'limits', 'order_by'.
 
     Returns
     -------
     str
         Python code string using LSDB calls.
     """
-    code = "import lsdb\n\n"
 
+    code = "import lsdb\n\n"
     code += "cat = lsdb.open_catalog(\n"
 
-    # Convert table names to catalog URLs (basic mapping for now)
-    if not entities["tables"]:
+    if not entities.get("tables"):
         raise ValueError("No tables found in ADQL query")
-    # For now, use the first table and convert to URL format
     table = entities["tables"][0]
-    # Convert table name like 'gaiadr3.gaia' to URL format
+
+    # Convert table name like 'gaia_dr3.gaia' to URL format
     if "." in table:
         parts = table.split(".")
         catalog_url = f"https://data.lsdb.io/hats/{parts[0]}/{parts[1]}/"
     else:
         catalog_url = f"https://data.lsdb.io/hats/{table}/"
     code += f"    '{catalog_url}',\n"
-    if entities["columns"]:
+
+    if entities.get("columns"):
         code += "    columns=[\n"
-        code += "        " + ", ".join(f'"{col}"' for col in entities["columns"]) + "\n"
+        code += "        " + ", ".join(f'\"{col}\"' for col in entities["columns"]) + "\n"
         code += "    ],\n"
 
-    # Handle spatial search if present
     if entities.get("spatial_search"):
         spatial = entities["spatial_search"]
         if spatial["type"] == "ConeSearch":
@@ -620,28 +735,25 @@ def format_lsdb_code(entities: dict) -> str:
             coords = spatial["coordinates"]
             coord_list = ", ".join(f"({ra}, {dec})" for ra, dec in coords)
             code += f"    search_filter=lsdb.PolygonSearch([{coord_list}]),\n"
+        elif spatial["type"] == "BoxSearch":
+            ra_lo, ra_hi = spatial["ra"]
+            dec_lo, dec_hi = spatial["dec"]
+            code += f"    search_filter=lsdb.BoxSearch(ra=({ra_lo}, {ra_hi}), dec=({dec_lo}, {dec_hi})),\n"
 
-    # Apply conditions if present
     if entities.get("conditions"):
-        conditions = entities["conditions"]
-        code += f"    filters={conditions},\n"
+        code += f"    filters={entities['conditions']},\n"
 
-    # Conclude open_catalog call
     code += "    )\n\n"
 
-    # Handle limit if present
     if entities.get("limits"):
-        limit_value = entities["limits"]
-        code += f"result = cat.head({limit_value})\n"
+        code += f"result = cat.head({entities['limits']})\n"
     else:
         code += "result = cat.compute()\n"
 
-    # Apply ORDER BY using pandas if requested
     order_by = entities.get("order_by") or []
     if order_by:
         cols = ", ".join(repr(col) for col, _ in order_by)
         asc_list = ", ".join("True" if asc else "False" for _, asc in order_by)
-        # Use sort_values and reassign to result
         code += f"result = result.sort_values(by=[{cols}], ascending=[{asc_list}])\n"
 
     return code
