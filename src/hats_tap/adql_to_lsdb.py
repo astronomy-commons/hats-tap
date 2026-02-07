@@ -721,7 +721,7 @@ def format_lsdb_code(entities: dict) -> str:
 
     if entities.get("columns"):
         code += "    columns=[\n"
-        code += "        " + ", ".join(f'\"{col}\"' for col in entities["columns"]) + "\n"
+        code += "        " + ", ".join(f'"{col}"' for col in entities["columns"]) + "\n"
         code += "    ],\n"
 
     if entities.get("spatial_search"):
