@@ -336,9 +336,9 @@ class TestEntityDictionary:
         assert "ra" in spatial
         assert "dec" in spatial
         assert "radius" in spatial
-        assert isinstance(spatial["ra"], (int, float))
-        assert isinstance(spatial["dec"], (int, float))
-        assert isinstance(spatial["radius"], (int, float))
+        assert isinstance(spatial["ra"], int | float)
+        assert isinstance(spatial["dec"], int | float)
+        assert isinstance(spatial["radius"], int | float)
 
     def test_polygon_search_structure(self):
         """Test that PolygonSearch has correct structure."""

@@ -7,6 +7,7 @@ readme = "README.md"
 authors = [
     { name = "LINCC Frameworks", email = "lincc-frameworks-team@lists.lsst.org" }
 ]
+description = "TAP(Table Access Protocol) server prototype for HATS data, queried using LSDB."
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -67,7 +68,6 @@ addopts = "--doctest-modules --doctest-glob=*.rst"
 
 [tool.ruff]
 line-length = 110
-target-version = "py39"
 [tool.ruff.lint]
 select = [
     # pycodestyle

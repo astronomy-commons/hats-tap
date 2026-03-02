@@ -6,6 +6,8 @@
 Welcome to hats_tap's documentation!
 ========================================================================================
 
+TAP(Table Access Protocol) server prototype for HATS data, queried using LSDB.
+
 Dev Guide - Getting Started
 ---------------------------
 
@@ -16,7 +18,7 @@ create and activate a new environment.
 
 .. code-block:: console
 
-   >> conda create env -n <env_name> python=3.11
+   >> conda create env -n <env_name> python=3.12
    >> conda activate <env_name>
 
 
