@@ -10,8 +10,8 @@ queries can be translated into the LSDB equivalent.
 This server uses the adql_to_lsdb module to convert ADQL queries
 """
 
+from ._version import __version__
 from .import_tap_schema import TAPSchemaImporter
 from .tap_schema_db import TAPSchemaDatabase
-from ._version import __version__
 
 __all__ = ["TAPSchemaDatabase", "TAPSchemaImporter", "__version__"]
