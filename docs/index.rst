@@ -6,6 +6,8 @@
 Welcome to hats_tap's documentation!
 ========================================================================================
 
+TAP-compliant server for HATS data, queried using LSDB.
+
 Dev Guide - Getting Started
 ---------------------------
 
