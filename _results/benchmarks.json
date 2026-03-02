@@ -1,17 +1,8 @@
 {
-    "benchmarks.mem_list": {
-        "code": "def mem_list():\n    \"\"\"Memory computations are prefixed with 'mem' or 'peakmem'.\"\"\"\n    return example_benchmarks.memory_computation()",
-        "name": "benchmarks.mem_list",
-        "param_names": [],
-        "params": [],
-        "type": "memory",
-        "unit": "bytes",
-        "version": "a31e7e31a99db6599fc29032ea5a3cb9782922117f13e122a69c2745a93c3d32"
-    },
-    "benchmarks.time_computation": {
-        "code": "def time_computation():\n    \"\"\"Time computations are prefixed with 'time'.\"\"\"\n    example_benchmarks.runtime_computation()",
+    "benchmarks.time_sample1_parse": {
+        "code": "def time_sample1_parse():\n    \"\"\"Time computations are prefixed with 'time'.\"\"\"\n    samples_dir = pathlib.Path(__file__).parent.parent / \"src\" / \"hats_tap\" / \"samples\"\n\n    adql = (samples_dir / \"sample1.adql\").read_text()\n    result = parse_adql_entities(adql)\n\n    assert result[\"tables\"] == [\"gaia_dr3.gaia\"]\n    assert result[\"columns\"] == [\n        \"source_id\",\n        \"ra\",\n        \"dec\",\n        \"phot_g_mean_mag\",\n        \"phot_variable_flag\",\n    ]\n    assert result[\"spatial_search\"] == {\n        \"type\": \"ConeSearch\",\n        \"ra\": 270.0,\n        \"dec\": 23.0,\n        \"radius\": 0.25,\n    }\n    assert result[\"limits\"] == 15",
         "min_run_count": 2,
-        "name": "benchmarks.time_computation",
+        "name": "benchmarks.time_sample1_parse",
         "number": 0,
         "param_names": [],
         "params": [],
@@ -20,7 +11,7 @@
         "sample_time": 0.01,
         "type": "time",
         "unit": "seconds",
-        "version": "089635b7375b19f5c790c7337625b200db3327a27d63c756ac5dbb4c1fc25b62",
+        "version": "a8b849ce1ff62d056b3de5943dbedbb91c67a500439b8db0774e1dcab67312c4",
         "warmup_time": -1
     },
     "version": 2
