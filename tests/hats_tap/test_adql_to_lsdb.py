@@ -3,7 +3,6 @@
 import pathlib
 
 import pytest
-
 from hats_tap.adql_to_lsdb import parse_adql_entities
 
 
