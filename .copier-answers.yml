@@ -14,12 +14,12 @@ include_docs: true
 include_notebooks: true
 mypy_type_checking: none
 package_name: hats_tap
-project_description: TAP-compliant server for HATS data, queried using LSDB.
+project_description: TAP(Table Access Protocol) server prototype for HATS data, queried
+    using LSDB.
 project_license: BSD
 project_name: hats-tap
 project_organization: astronomy-commons
 python_versions:
-- '3.10'
 - '3.11'
 - '3.12'
 - '3.13'
