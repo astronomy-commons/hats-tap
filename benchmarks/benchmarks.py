@@ -3,14 +3,30 @@
 For more information on writing benchmarks:
 https://asv.readthedocs.io/en/stable/writing_benchmarks.html."""
 
-from hats_tap import example_benchmarks
+import pathlib
+
+from hats_tap.adql_to_lsdb import parse_adql_entities
 
 
-def time_computation():
+def time_sample1_parse():
     """Time computations are prefixed with 'time'."""
-    example_benchmarks.runtime_computation()
+    samples_dir = pathlib.Path(__file__).parent.parent / "src" / "hats_tap" / "samples"
 
+    adql = (samples_dir / "sample1.adql").read_text()
+    result = parse_adql_entities(adql)
 
-def mem_list():
-    """Memory computations are prefixed with 'mem' or 'peakmem'."""
-    return example_benchmarks.memory_computation()
+    assert result["tables"] == ["gaia_dr3.gaia"]
+    assert result["columns"] == [
+        "source_id",
+        "ra",
+        "dec",
+        "phot_g_mean_mag",
+        "phot_variable_flag",
+    ]
+    assert result["spatial_search"] == {
+        "type": "ConeSearch",
+        "ra": 270.0,
+        "dec": 23.0,
+        "radius": 0.25,
+    }
+    assert result["limits"] == 15
