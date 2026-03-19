@@ -408,6 +408,8 @@ def sync_query():
                         dec=spatial["dec"],
                         radius_arcsec=spatial["radius"] * 3600,
                     )
+                elif spatial["type"] == "BoxSearch":
+                    search_filter = lsdb.BoxSearch(ra=tuple(spatial["ra"]), dec=tuple(spatial["dec"]))
                 # TODO: Other supported filters should be constructed here
                 # TODO: such as PolygonSearch
 
