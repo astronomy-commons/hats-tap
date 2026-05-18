@@ -288,38 +288,41 @@ def index():
     """Root endpoint with server information."""
     html = """
     <html>
-    <head><title>TAP Server Prototype</title></head>
+    <head><title>LSDB TAP Service</title></head>
     <body>
-        <h1>TAP Server Prototype</h1>
-        <p>This is a prototype implementation of a TAP (Table Access Protocol) server.</p>
+        <h1>LSDB TAP Service (Experimental)</h1>
+        <p>
+            This is an experimental <a href="https://www.ivoa.net/documents/TAP/">TAP
+            (Table Access Protocol)</a> server for
+            <a href="https://lsdb.readthedocs.io">LSDB</a> catalogs. It translates
+            ADQL queries into LSDB operations and returns results in VOTable format.
+        </p>
+        <p>
+            <strong>Full documentation</strong> &mdash; supported features, limitations,
+            and usage examples:<br/>
+            <a href="https://docs.lsdb.io/en/latest/data-access/tap-lsdb.html">
+                https://docs.lsdb.io/en/latest/data-access/tap-lsdb.html
+            </a>
+        </p>
+        <p>
+            If you run into problems, please
+            <a href="https://github.com/astronomy-commons/hats-tap/issues">open an issue</a>.
+        </p>
 
         <h2>Endpoints</h2>
         <ul>
-            <li><strong>GET/POST /sync</strong> - Synchronous query endpoint</li>
-            <li><strong>GET /capabilities</strong> - Service capabilities</li>
-            <li><strong>GET /tables</strong> - Available tables</li>
+            <li><strong>GET/POST /sync</strong> &mdash; synchronous query endpoint</li>
+            <li><strong>GET /capabilities</strong> &mdash; service capabilities</li>
+            <li><strong>GET /tables</strong> &mdash; available tables and columns</li>
         </ul>
 
         <h2>Example Query</h2>
-        <p>Submit an ADQL query to the /sync endpoint:</p>
         <pre>
 curl -X POST https://tap.data.lsdb.io/sync \
   -d "REQUEST=doQuery" \
   -d "LANG=ADQL" \
-  -d "QUERY=SELECT TOP 10 ra, dec, mean_mag_g, mean_mag_r, mean_mag_i FROM ztf_dr14 WHERE mean_mag_r < 20"
+  -d "QUERY=SELECT TOP 10 ra, dec, mean_mag_g, mean_mag_r, mean_mag_i FROM ztf_dr14 WHERE mean_mag_r &lt; 20"
         </pre>
-
-        <h2>Supported ADQL Features</h2>
-        <ul>
-            <li>SELECT with column list or *</li>
-            <li>FROM with table name</li>
-            <li>WHERE clause with comparison operators</li>
-            <li>CONTAINS with POINT and CIRCLE for cone searches</li>
-            <li>TOP/LIMIT clause</li>
-        </ul>
-
-        <p><em>Note: This server uses the adql_to_lsdb module to
-               convert ADQL to LSDB operations.</em></p>
     </body>
     </html>
     """
