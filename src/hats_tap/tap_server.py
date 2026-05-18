@@ -288,7 +288,7 @@ def index():
     """Root endpoint with server information."""
     html = """
     <html>
-    <head><title>LSDB TAP Service</title></head>
+    <head><title>TAP Server Prototype</title></head>
     <body>
         <h1>LSDB TAP Service (Experimental)</h1>
         <p>
@@ -298,8 +298,8 @@ def index():
             ADQL queries into LSDB operations and returns results in VOTable format.
         </p>
         <p>
-            <strong>Full documentation</strong> &mdash; supported features, limitations,
-            and usage examples:<br/>
+            <strong>Full documentation</strong> (supported features, limitations,
+            and usage examples):<br/>
             <a href="https://docs.lsdb.io/en/latest/data-access/tap-lsdb.html">
                 https://docs.lsdb.io/en/latest/data-access/tap-lsdb.html
             </a>
@@ -311,9 +311,9 @@ def index():
 
         <h2>Endpoints</h2>
         <ul>
-            <li><strong>GET/POST /sync</strong> &mdash; synchronous query endpoint</li>
-            <li><strong>GET /capabilities</strong> &mdash; service capabilities</li>
-            <li><strong>GET /tables</strong> &mdash; available tables and columns</li>
+            <li><strong>GET/POST /sync</strong> - synchronous query endpoint</li>
+            <li><strong>GET /capabilities</strong> - service capabilities</li>
+            <li><strong>GET /tables</strong> - available tables and columns</li>
         </ul>
 
         <h2>Example Query</h2>
@@ -323,6 +323,17 @@ curl -X POST https://tap.data.lsdb.io/sync \
   -d "LANG=ADQL" \
   -d "QUERY=SELECT TOP 10 ra, dec, mean_mag_g, mean_mag_r, mean_mag_i FROM ztf_dr14 WHERE mean_mag_r &lt; 20"
         </pre>
+
+        <h2>Supported ADQL Features</h2>
+        <ul>
+            <li>SELECT with column list or *</li>
+            <li>FROM with table name</li>
+            <li>WHERE clause with comparison operators</li>
+            <li>CONTAINS with POINT and CIRCLE for cone searches</li>
+            <li>TOP/LIMIT clause</li>
+        </ul>
+        <p><em>Note: This server uses the adql_to_lsdb module to
+               convert ADQL to LSDB operations.</em></p>
     </body>
     </html>
     """
