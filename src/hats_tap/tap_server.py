@@ -311,9 +311,9 @@ def index():
 
         <h2>Endpoints</h2>
         <ul>
-            <li><strong>GET/POST /sync</strong> - synchronous query endpoint</li>
-            <li><strong>GET /capabilities</strong> - service capabilities</li>
-            <li><strong>GET /tables</strong> - available tables and columns</li>
+            <li><strong>GET/POST /sync</strong> - Synchronous query endpoint</li>
+            <li><strong>GET /capabilities</strong> - Service capabilities</li>
+            <li><strong>GET /tables</strong> - Available tables and columns</li>
         </ul>
 
         <h2>Example Query</h2>
