@@ -332,6 +332,7 @@ curl -X POST https://tap.data.lsdb.io/sync \
             <li>CONTAINS with POINT and CIRCLE for cone searches</li>
             <li>TOP/LIMIT clause</li>
         </ul>
+
         <p><em>Note: This server uses the adql_to_lsdb module to
                convert ADQL to LSDB operations.</em></p>
     </body>
