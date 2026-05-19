@@ -318,9 +318,9 @@ def index():
 
         <h2>Example Query</h2>
         <pre>
-curl -X POST https://tap.data.lsdb.io/sync \
-  -d "REQUEST=doQuery" \
-  -d "LANG=ADQL" \
+curl -X POST https://tap.data.lsdb.io/sync \\
+  -d "REQUEST=doQuery" \\
+  -d "LANG=ADQL" \\
   -d "QUERY=SELECT TOP 10 ra, dec, mean_mag_g, mean_mag_r, mean_mag_i FROM ztf_dr14 WHERE mean_mag_r &lt; 20"
         </pre>
 
