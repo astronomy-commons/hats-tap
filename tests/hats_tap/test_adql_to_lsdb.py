@@ -396,3 +396,39 @@ class TestEntityDictionary:
         assert len(order_by) == 2
         assert order_by[0] == ("objra", True)  # ASC = True
         assert order_by[1] == ("objdec", False)  # DESC = False
+
+
+class TestBoxSearchDetection:
+    """Tests for detecting RA/Dec box searches from WHERE predicates."""
+
+    def test_box_search_detected_from_ra_range(self):
+        """Detect ra >= lo AND ra < hi and default dec to (-90, 90)."""
+        adql = """
+        SELECT source_id
+        FROM gaia_dr3.gaia as obj
+        WHERE obj.ra >= 186 and obj.ra < 187
+        """
+        result = parse_adql_entities(adql)
+
+        assert result["spatial_search"] == {
+            "type": "BoxSearch",
+            "ra": (186.0, 187.0),
+            "dec": (-90.0, 90.0),
+        }
+        assert result["conditions"] == []
+
+    def test_box_search_detected_from_ra_and_dec_ranges(self):
+        """Detect a full RA/Dec range and remove predicates from conditions."""
+        adql = """
+        SELECT source_id
+        FROM gaia_dr3.gaia
+        WHERE ra >= 10 AND ra < 12 AND dec >= -2 AND dec <= 3
+        """
+        result = parse_adql_entities(adql)
+
+        assert result["spatial_search"] == {
+            "type": "BoxSearch",
+            "ra": (10.0, 12.0),
+            "dec": (-2.0, 3.0),
+        }
+        assert result["conditions"] == []
