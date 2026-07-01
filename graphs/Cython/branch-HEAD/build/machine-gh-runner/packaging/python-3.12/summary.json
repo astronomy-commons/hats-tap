@@ -1,1 +1,1 @@
-[{"name": "benchmarks.time_sample1_parse", "idx": null, "pretty_name": "benchmarks.time_sample1_parse", "last_rev": 45, "last_value": 0.08487900000000081, "last_err": 0.0011585012284953409, "prev_value": 0.0998128814999859, "change_rev": [null, 39]}]
+[{"name": "benchmarks.time_sample1_parse", "idx": null, "pretty_name": "benchmarks.time_sample1_parse", "last_rev": 48, "last_value": 0.08487900000000081, "last_err": 0.0031094691660836153, "prev_value": 0.0998128814999859, "change_rev": [null, 39]}]
