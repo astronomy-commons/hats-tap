@@ -297,6 +297,56 @@ class TestRaDecInSelectValidation:
         assert "objdec" in result["columns"]
 
 
+class TestCountDistinctTranslation:
+    """Test the bounded COUNT(DISTINCT column) unique-values translation."""
+
+    def test_count_distinct_column_emits_unique_values(self):
+        """Load only the inner column and compute its unique values."""
+        from hats_tap.adql_to_lsdb import adql_to_lsdb
+
+        adql = "SELECT COUNT(DISTINCT diaObjectId) FROM ppdb.DiaObject"
+
+        entities = parse_adql_entities(adql)
+        code = adql_to_lsdb(adql)
+
+        assert entities["columns"] == ["diaObjectId"]
+        assert entities["unique_values_column"] == "diaObjectId"
+        assert 'columns=[\n        "diaObjectId"\n    ]' in code
+        assert 'result = cat["diaObjectId"].unique().compute()' in code
+        assert "COUNT" not in code
+        compile(code, "<generated>", "exec")
+
+    @pytest.mark.parametrize(
+        "adql",
+        [
+            "SELECT COUNT(diaObjectId) FROM ppdb.DiaObject",
+            "SELECT COUNT(ALL diaObjectId) FROM ppdb.DiaObject",
+            "SELECT COUNT(*) FROM ppdb.DiaObject",
+            "SELECT SUM(DISTINCT diaObjectId) FROM ppdb.DiaObject",
+            "SELECT COUNT(DISTINCT diaObjectId + 1) FROM ppdb.DiaObject",
+            "SELECT COUNT(DISTINCT ppdb.diaObjectId) FROM ppdb.DiaObject",
+            'SELECT COUNT(DISTINCT "diaObjectId") FROM ppdb.DiaObject',
+            "SELECT COUNT(DISTINCT diaObjectId) AS unique_ids FROM ppdb.DiaObject",
+            "SELECT COUNT(DISTINCT diaObjectId), other FROM ppdb.DiaObject",
+            "SELECT TOP 5 COUNT(DISTINCT diaObjectId) FROM ppdb.DiaObject",
+            "SELECT DISTINCT COUNT(DISTINCT diaObjectId) FROM ppdb.DiaObject",
+            "SELECT COUNT(DISTINCT diaObjectId) FROM ppdb.DiaObject WHERE diaObjectId > 0",
+            "SELECT COUNT(DISTINCT diaObjectId) FROM ppdb.DiaObject ORDER BY diaObjectId",
+            "SELECT COUNT(DISTINCT diaObjectId) FROM ppdb.DiaObject, other",
+            "SELECT COUNT(DISTINCT diaObjectId) FROM ppdb.DiaObject AS d",
+            (
+                "SELECT COUNT(DISTINCT diaObjectId) FROM ppdb.DiaObject "
+                "UNION SELECT COUNT(DISTINCT diaObjectId) FROM other"
+            ),
+        ],
+    )
+    def test_other_aggregate_shapes_do_not_use_unique_values_path(self, adql):
+        """Keep unsupported aggregate shapes out of the bounded translation."""
+        entities = parse_adql_entities(adql)
+
+        assert entities["unique_values_column"] is None
+
+
 class TestEntityDictionary:
     """Test the structure and contents of the dictionary returned by parse_adql_entities."""
 
@@ -318,6 +368,7 @@ class TestEntityDictionary:
         assert "conditions" in result
         assert "limits" in result
         assert "order_by" in result
+        assert "unique_values_column" in result
 
     def test_cone_search_structure(self):
         """Test that ConeSearch has correct structure."""

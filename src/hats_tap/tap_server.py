@@ -330,6 +330,7 @@ curl -X POST https://tap.data.lsdb.io/sync \\
             <li>FROM with table name</li>
             <li>WHERE clause with comparison operators</li>
             <li>CONTAINS with POINT and CIRCLE for cone searches</li>
+            <li>COUNT(DISTINCT column) for unique values</li>
             <li>TOP/LIMIT clause</li>
         </ul>
 
@@ -433,7 +434,10 @@ def sync_query():
                 # NOTE: these filters sort of work, but fail with string values like "VARIABLE"
                 filters=filters,
             )
-            result_df = cat.head(entities["limits"])
+            if unique_values_column := entities.get("unique_values_column"):
+                result_df = cat[unique_values_column].unique().compute().to_frame()
+            else:
+                result_df = cat.head(entities["limits"])
 
             # Convert DataFrame to VOTable data format
             data, result_columns = dataframe_to_votable_data(result_df)

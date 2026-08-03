@@ -22,6 +22,7 @@ import sys
 import traceback
 
 from antlr4 import ParseTreeWalker
+from queryparser.adql.ADQLParser import ADQLParser
 from queryparser.adql.adqltranslator import ADQLQueryTranslator, FormatListener, SelectQueryListener
 
 logger = logging.getLogger(__name__)
@@ -38,6 +39,7 @@ class LSDBFormatListener(FormatListener):
       - or, CONTAINS(POINT(...), POLYGON(...)) -> lsdb.PolygonSearch(...)
     - Basic conditions (e.g. phot_g_mean_mag < 10) -> filters= or cat.query(...)
     - Limits (e.g. TOP 10) -> q.head(limit)
+    - COUNT(DISTINCT column) -> unique values for one simple column
     """
 
     def __init__(self, parser, contexts, limit_contexts):
@@ -49,6 +51,7 @@ class LSDBFormatListener(FormatListener):
             "conditions": [],
             "limits": None,
             "order_by": [],
+            "unique_values_column": None,
         }
         # Track parsing context
         self._in_contains = False
@@ -270,9 +273,92 @@ class LSDBFormatListener(FormatListener):
         if ctx.getText().strip() == "*":
             raise ValueError("SELECT * is not supported. Please specify column names explicitly.")
 
+        if unique_values_column := self._extract_unique_values_column(ctx):
+            self.entities["columns"].append(unique_values_column)
+            self.entities["unique_values_column"] = unique_values_column
+            return
+
         # Extract column names from the SELECT clause
         columns = self._extract_select_columns(ctx)
         self.entities["columns"].extend(columns)
+
+    def _extract_unique_values_column(self, ctx):
+        """Extract the column from a simple COUNT(DISTINCT column) select list."""
+        select_children = ctx.children or []
+        if len(select_children) != 1 or not isinstance(select_children[0], ADQLParser.Select_sublistContext):
+            return None
+
+        select_query = ctx.parentCtx
+        if not isinstance(select_query, ADQLParser.Select_queryContext):
+            return None
+        query_root = ctx
+        while query_root.parentCtx is not None:
+            query_root = query_root.parentCtx
+        if len(self._find_contexts(query_root, ADQLParser.Select_queryContext)) != 1:
+            return None
+        if any(
+            isinstance(child, ADQLParser.Set_limitContext | ADQLParser.Set_quantifierContext)
+            for child in select_query.children or []
+        ):
+            return None
+
+        table_expressions = self._find_contexts(select_query, ADQLParser.Table_expressionContext)
+        if len(table_expressions) != 1:
+            return None
+        table_children = table_expressions[0].children or []
+        if len(table_children) != 1 or not isinstance(table_children[0], ADQLParser.From_clauseContext):
+            return None
+        from_children = table_children[0].children or []
+        if len(from_children) != 2 or not isinstance(from_children[1], ADQLParser.Table_referenceContext):
+            return None
+        table_reference_children = from_children[1].children or []
+        if len(table_reference_children) != 1 or not isinstance(
+            table_reference_children[0], ADQLParser.Table_nameContext
+        ):
+            return None
+
+        functions = self._find_contexts(ctx, ADQLParser.General_set_functionContext)
+        if len(functions) != 1 or ctx.getText() != functions[0].getText():
+            return None
+
+        function = functions[0]
+        function_type = function.set_function_type()
+        quantifier = function.set_quantifier()
+        if (
+            function_type is None
+            or function_type.getText().upper() != "COUNT"
+            or quantifier is None
+            or quantifier.getText().upper() != "DISTINCT"
+        ):
+            return None
+
+        value_expression = function.value_expression()
+        if value_expression is None:
+            return None
+        columns = self._find_contexts(value_expression, ADQLParser.Column_referenceContext)
+        if len(columns) != 1 or value_expression.getText() != columns[0].getText():
+            return None
+
+        column = columns[0]
+        column_children = column.children or []
+        if len(column_children) != 1 or not isinstance(column_children[0], ADQLParser.Column_nameContext):
+            return None
+
+        identifiers = self._find_contexts(column, ADQLParser.Regular_identifierContext)
+        if len(identifiers) != 1:
+            return None
+        identifier = identifiers[0].getText()
+        if column.getText() != identifier or identifier.startswith('"'):
+            return None
+        return identifier
+
+    @staticmethod
+    def _find_contexts(node, context_type):
+        """Return descendants of ``node`` that match an ADQL context type."""
+        contexts = [node] if isinstance(node, context_type) else []
+        for child in getattr(node, "children", None) or []:
+            contexts.extend(LSDBFormatListener._find_contexts(child, context_type))
+        return contexts
 
     def _extract_select_columns(self, ctx):
         """Extract column names from a SELECT list context."""
@@ -540,13 +626,14 @@ class LSDBFormatListener(FormatListener):
 
 def parse_adql_entities(adql: str) -> dict:
     """
-    Parse ADQL query and extract the six entities of interest:
+    Parse ADQL query and extract the seven entities of interest:
     - tables: List of table names (simple FROM clauses only)
     - columns: List of column names
     - spatial_search: Spatial search parameters (e.g., ConeSearch)
     - conditions: List of filter conditions
     - limits: Row limit information
     - order_by: List of columns to order the results by
+    - unique_values_column: Simple COUNT(DISTINCT column) target, if present
 
     Returns:
         dict: Dictionary containing the extracted entities
@@ -580,7 +667,8 @@ def format_lsdb_code(entities: dict) -> str:
     ----------
     entities : dict
         Dictionary containing parsed ADQL entities with keys:
-        'tables', 'columns', 'spatial_search', 'conditions', 'limits'.
+        'tables', 'columns', 'spatial_search', 'conditions', 'limits',
+        'order_by', and 'unique_values_column'.
 
     Returns
     -------
@@ -629,8 +717,10 @@ def format_lsdb_code(entities: dict) -> str:
     # Conclude open_catalog call
     code += "    )\n\n"
 
-    # Handle limit if present
-    if entities.get("limits"):
+    # Handle the issue-directed unique-values interpretation of COUNT(DISTINCT).
+    if unique_values_column := entities.get("unique_values_column"):
+        code += f'result = cat["{unique_values_column}"].unique().compute()\n'
+    elif entities.get("limits"):
         limit_value = entities["limits"]
         code += f"result = cat.head({limit_value})\n"
     else:
